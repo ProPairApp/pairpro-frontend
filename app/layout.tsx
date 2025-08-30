@@ -13,7 +13,11 @@ export default function RootLayout({
       <body style={{maxWidth: 720, margin: "0 auto", padding: 24, fontFamily: "system-ui, sans-serif"}}>
         <header style={{display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom: 24}}>
           <strong>PairPro</strong>
-          <nav><a href="/">Home</a></nav>
+          <nav style={{display:"flex", gap:12}}>
+  <a href="/">Home</a>
+  <a href="/providers">Providers</a>
+  <a href="/providers/new">Add Provider</a>
+</nav>
         </header>
         {children}
         <footer style={{marginTop: 48, opacity: 0.6}}>© {new Date().getFullYear()} PairPro</footer>

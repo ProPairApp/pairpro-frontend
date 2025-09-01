@@ -7,6 +7,7 @@ async function getProviders() {
 
 export default async function ProvidersPage() {
   const providers = await getProviders();
+
   return (
     <main>
       <h1 style={{ fontSize: "28px", marginBottom: 12 }}>Browse Providers</h1>
@@ -16,7 +17,10 @@ export default async function ProvidersPage() {
         <ul>
           {providers.map((p: any) => (
             <li key={p.id}>
-              {p.name} — ⭐ {p.rating}
+              <strong>{p.name}</strong>
+              {p.service_type ? ` — ${p.service_type}` : ""}
+              {p.city ? ` — ${p.city}` : ""}
+              {typeof p.rating === "number" ? ` — ⭐ ${p.rating}` : ""}
             </li>
           ))}
         </ul>

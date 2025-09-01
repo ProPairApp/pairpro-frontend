@@ -16,12 +16,12 @@ export default async function ProvidersPage() {
       ) : (
         <ul>
           {providers.map((p: any) => (
-            <li key={p.id}>
-              <strong>{p.name}</strong>
-              {p.service_type ? ` — ${p.service_type}` : ""}
-              {p.city ? ` — ${p.city}` : ""}
-              {typeof p.rating === "number" ? ` — ⭐ ${p.rating}` : ""}
-            </li>
+           <li key={p.id}>
+  <strong>{p.name}</strong>
+  {p.service_type ? ` — ${p.service_type}` : ""}
+  {p.city ? ` — ${p.city}` : ""}
+  {typeof p.rating === "number" ? ` — ⭐ ${p.rating}` : ""}
+</li>
           ))}
         </ul>
       )}

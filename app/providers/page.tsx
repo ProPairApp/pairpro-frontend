@@ -1,63 +1,92 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
+
+type Provider = {
+  id: number;
+  name: string;
+  rating?: number | null;
+  service_type?: string | null;
+  city?: string | null;
+};
 
 export default function ProvidersPage() {
-  const [providers, setProviders] = useState<any[]>([]);
+  const [providers, setProviders] = useState<Provider[]>([]);
   const [loading, setLoading] = useState(false);
   const [city, setCity] = useState("");
   const [serviceType, setServiceType] = useState("");
+  const [error, setError] = useState<string | null>(null);
 
   async function fetchProviders(filters: { city?: string; service_type?: string } = {}) {
     setLoading(true);
-    const base = process.env.NEXT_PUBLIC_API_URL!;
-    const params = new URLSearchParams();
-    if (filters.city) params.append("city", filters.city);
-    if (filters.service_type) params.append("service_type", filters.service_type);
+    setError(null);
+    try {
+      const base = process.env.NEXT_PUBLIC_API_URL!;
+      const params = new URLSearchParams();
+      if (filters.city) params.append("city", filters.city);
+      if (filters.service_type) params.append("service_type", filters.service_type);
 
-    const res = await fetch(`${base}/providers?${params.toString()}`, { cache: "no-store" });
-    const data = res.ok ? await res.json() : [];
-    setProviders(data);
-    setLoading(false);
+      const url = `${base}/providers${params.toString() ? `?${params.toString()}` : ""}`;
+      const res = await fetch(url, { cache: "no-store" });
+      if (!res.ok) throw new Error(`Request failed: ${res.status}`);
+      const data = await res.json();
+      setProviders(Array.isArray(data) ? data : []);
+    } catch (e: any) {
+      setError(e.message || "Failed to load providers");
+      setProviders([]);
+    } finally {
+      setLoading(false);
+    }
   }
 
+  // initial load
   useEffect(() => {
     fetchProviders();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  function handleSearch(e: React.FormEvent) {
-    e.preventDefault();
-    fetchProviders({
-      city: city.trim(),
-      service_type: serviceType.trim(),
-    });
-  }
+  // live (debounced) search by city + serviceType
+  useEffect(() => {
+    const id = setTimeout(() => {
+      fetchProviders({
+        city: city.trim() || undefined,
+        service_type: serviceType.trim() || undefined,
+      });
+    }, 300); // 300ms debounce
+    return () => clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [city, serviceType]);
 
   return (
     <main>
       <h1 style={{ fontSize: 28, marginBottom: 12 }}>Browse Providers</h1>
 
-      <form onSubmit={handleSearch} style={{ display: "flex", gap: 10, marginBottom: 20 }}>
+      <div style={{ display: "flex", gap: 10, marginBottom: 16 }}>
         <input
           value={city}
           onChange={(e) => setCity(e.target.value)}
-          placeholder="Filter by city"
+          placeholder="Filter by city (e.g., Miami)"
           style={{ padding: 8, border: "1px solid #ccc", borderRadius: 6 }}
         />
         <input
           value={serviceType}
           onChange={(e) => setServiceType(e.target.value)}
-          placeholder="Filter by service"
+          placeholder="Filter by service (e.g., Roofing)"
           style={{ padding: 8, border: "1px solid #ccc", borderRadius: 6 }}
         />
         <button
-          type="submit"
+          onClick={() => {
+            setCity("");
+            setServiceType("");
+          }}
           style={{ padding: "8px 12px", background: "black", color: "white", borderRadius: 6 }}
+          type="button"
         >
-          Search
+          Reset
         </button>
-      </form>
+      </div>
 
+      {error && <p style={{ color: "crimson" }}>Error: {error}</p>}
       {loading ? (
         <p>Loading...</p>
       ) : providers.length === 0 ? (
@@ -73,17 +102,13 @@ export default function ProvidersPage() {
             </tr>
           </thead>
           <tbody>
-            {providers.map((p: any) => (
+            {providers.map((p) => (
               <tr key={p.id}>
                 <td style={{ borderBottom: "1px solid #f0f0f0", padding: 8 }}>
                   <strong>{p.name}</strong>
                 </td>
-                <td style={{ borderBottom: "1px solid #f0f0f0", padding: 8 }}>
-                  {p.service_type ?? ""}
-                </td>
-                <td style={{ borderBottom: "1px solid #f0f0f0", padding: 8 }}>
-                  {p.city ?? ""}
-                </td>
+                <td style={{ borderBottom: "1px solid #f0f0f0", padding: 8 }}>{p.service_type ?? ""}</td>
+                <td style={{ borderBottom: "1px solid #f0f0f0", padding: 8 }}>{p.city ?? ""}</td>
                 <td style={{ borderBottom: "1px solid #f0f0f0", padding: 8 }}>
                   {typeof p.rating === "number" ? `⭐ ${p.rating}` : ""}
                 </td>
@@ -92,6 +117,9 @@ export default function ProvidersPage() {
           </tbody>
         </table>
       )}
+      <p style={{ marginTop: 16 }}>
+        Want to add one? <a href="/providers/new">Add Provider</a>
+      </p>
     </main>
   );
 }

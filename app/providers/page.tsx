@@ -1,19 +1,67 @@
-async function getProviders() {
-  const base = process.env.NEXT_PUBLIC_API_URL!;
-  const res = await fetch(`${base}/providers`, { cache: "no-store" });
-  if (!res.ok) return [];
-  return res.json();
-}
+"use client";
 
-export default async function ProvidersPage() {
-  const providers = await getProviders();
+import { useState, useEffect } from "react";
+
+export default function ProvidersPage() {
+  const [providers, setProviders] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [city, setCity] = useState("");
+  const [serviceType, setServiceType] = useState("");
+
+  async function fetchProviders(filters: { city?: string; service_type?: string } = {}) {
+    setLoading(true);
+    const base = process.env.NEXT_PUBLIC_API_URL!;
+    const params = new URLSearchParams();
+    if (filters.city) params.append("city", filters.city);
+    if (filters.service_type) params.append("service_type", filters.service_type);
+
+    const res = await fetch(`${base}/providers?${params.toString()}`, { cache: "no-store" });
+    const data = res.ok ? await res.json() : [];
+    setProviders(data);
+    setLoading(false);
+  }
+
+  useEffect(() => {
+    fetchProviders();
+  }, []);
+
+  function handleSearch(e: React.FormEvent) {
+    e.preventDefault();
+    fetchProviders({
+      city: city.trim(),
+      service_type: serviceType.trim(),
+    });
+  }
 
   return (
     <main>
       <h1 style={{ fontSize: 28, marginBottom: 12 }}>Browse Providers</h1>
 
-      {providers.length === 0 ? (
-        <p>No providers yet.</p>
+      <form onSubmit={handleSearch} style={{ display: "flex", gap: 10, marginBottom: 20 }}>
+        <input
+          value={city}
+          onChange={(e) => setCity(e.target.value)}
+          placeholder="Filter by city"
+          style={{ padding: 8, border: "1px solid #ccc", borderRadius: 6 }}
+        />
+        <input
+          value={serviceType}
+          onChange={(e) => setServiceType(e.target.value)}
+          placeholder="Filter by service"
+          style={{ padding: 8, border: "1px solid #ccc", borderRadius: 6 }}
+        />
+        <button
+          type="submit"
+          style={{ padding: "8px 12px", background: "black", color: "white", borderRadius: 6 }}
+        >
+          Search
+        </button>
+      </form>
+
+      {loading ? (
+        <p>Loading...</p>
+      ) : providers.length === 0 ? (
+        <p>No providers found.</p>
       ) : (
         <table style={{ borderCollapse: "collapse", width: "100%", maxWidth: 800 }}>
           <thead>
@@ -44,11 +92,6 @@ export default async function ProvidersPage() {
           </tbody>
         </table>
       )}
-
-      <p style={{ marginTop: 16 }}>
-        Want to add one? <a href="/providers/new">Add Provider</a>
-      </p>
     </main>
   );
 }
-

@@ -2,6 +2,10 @@
 
 import { useEffect, useState } from "react";
 
+const BASE =
+  process.env.NEXT_PUBLIC_API_URL ??
+  "https://pairpro-backend-vyh1.onrender.com"; // ✅ fallback if env is missing
+
 type Provider = {
   id: number;
   name: string;
@@ -21,13 +25,12 @@ export default function ProvidersPage() {
     setLoading(true);
     setError(null);
     try {
-      const base = process.env.NEXT_PUBLIC_API_URL!;
       const params = new URLSearchParams();
       if (filters.city) params.append("city", filters.city);
       if (filters.service_type) params.append("service_type", filters.service_type);
 
-      const url = `${base}/providers${params.toString() ? `?${params.toString()}` : ""}`;
-      const res = await fetch(url, { cache: "no-store" });
+      const url = `${BASE}/providers${params.toString() ? `?${params.toString()}` : ""}`;
+      const res = await fetch(url, { cache: "no-store", mode: "cors" });
       if (!res.ok) throw new Error(`Request failed: ${res.status}`);
       const data = await res.json();
       setProviders(Array.isArray(data) ? data : []);
@@ -39,13 +42,11 @@ export default function ProvidersPage() {
     }
   }
 
-  // initial load
   useEffect(() => {
     fetchProviders();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // live (debounced) search
   useEffect(() => {
     const id = setTimeout(() => {
       fetchProviders({
@@ -59,6 +60,9 @@ export default function ProvidersPage() {
 
   return (
     <main>
+      {/* debug helper */}
+      <p style={{ opacity: 0.6, fontSize: 12 }}>api: {BASE}</p>
+
       <h1 style={{ fontSize: 28, marginBottom: 12 }}>Browse Providers</h1>
 
       <div style={{ display: "flex", gap: 10, marginBottom: 16 }}>

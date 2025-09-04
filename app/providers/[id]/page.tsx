@@ -94,33 +94,59 @@ export default function ProviderDetailPage() {
   }, [providerId]);
 
   async function submitReview(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    if (submitting || !Number.isFinite(providerId)) return;
-    setSubmitting(true);
-    setSubmitError(null);
+  e.preventDefault();
+  if (submitting || !Number.isFinite(providerId)) return;
+
+  setSubmitting(true);
+  setSubmitError(null);
+
+  // 1) snapshot current count (to detect success even if fetch throws)
+  const beforeCount = reviews.length;
+
+  try {
+    const body = { stars: Number(stars), ...(comment.trim() ? { comment: comment.trim() } : {}) };
+
+    // keepalive helps avoid "fetch aborted" when the tab is busy
+    const res = await fetch(`${BASE}/providers/${providerId}/reviews`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+      mode: "cors",
+      keepalive: true,
+      cache: "no-store",
+    });
+
+    if (!res.ok) {
+      // try to read the body for a clearer error
+      let txt = "";
+      try { txt = await res.text(); } catch {}
+      throw new Error(`POST ${res.status} ${res.statusText}${txt ? ` | ${txt}` : ""}`);
+    }
+
+    // 2) success path
+    setComment("");
+    await load();
+    alert("Review added!");
+  } catch (err: any) {
+    // 3) fallback: even if fetch failed, check if the review actually saved
     try {
-      const body = { stars: Number(stars), ...(comment.trim() ? { comment: comment.trim() } : {}) };
-      const res = await fetch(revsUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-        mode: "cors",
-      });
-      if (!res.ok) {
-        const txt = await res.text().catch(() => "");
-        setSubmitError(`POST ${revsUrl} → ${res.status} ${res.statusText} ${txt ? `| body: ${txt}` : ""}`);
+      const prev = beforeCount;
+      await load(); // refresh from server
+      const now = reviews.length;
+      if (now > prev) {
+        setComment("");
+        alert("Review added! (network was flaky, but your review is saved)");
+        setSubmitError(null);
         return;
       }
-      setComment("");
-      await load();
-      alert("Review added!");
-    } catch (e: any) {
-      setSubmitError(e?.message || "Network error during submit");
-    } finally {
-      setSubmitting(false);
-    }
-  }
+    } catch {}
 
+    console.error("Submit error:", err);
+    setSubmitError((err?.message || "Failed to submit review") + " — check Network tab for details");
+  } finally {
+    setSubmitting(false);
+  }
+}
   const debugTop = `api: ${BASE} · idParam: ${idParam ?? "(none)"} · parsedId: ${
     Number.isFinite(providerId) ? providerId : "NaN"
   }`;

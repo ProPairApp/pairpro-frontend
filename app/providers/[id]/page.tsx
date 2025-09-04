@@ -2,6 +2,10 @@
 
 import { useEffect, useMemo, useState } from "react";
 
+const BASE =
+  process.env.NEXT_PUBLIC_API_URL ??
+  "https://pairpro-backend-vyh1.onrender.com"; // ✅ fallback if env is missing
+
 type Provider = {
   id: number;
   name: string;
@@ -20,7 +24,6 @@ type Review = {
 
 export default function ProviderDetailPage({ params }: { params: { id: string } }) {
   const providerId = Number(params.id);
-  const base = process.env.NEXT_PUBLIC_API_URL!;
   const [provider, setProvider] = useState<Provider | null>(null);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
@@ -36,8 +39,8 @@ export default function ProviderDetailPage({ params }: { params: { id: string } 
     setError(null);
     try {
       const [provRes, revRes] = await Promise.all([
-        fetch(`${base}/providers/${providerId}`, { cache: "no-store" }),
-        fetch(`${base}/providers/${providerId}/reviews`, { cache: "no-store" }),
+        fetch(`${BASE}/providers/${providerId}`, { cache: "no-store", mode: "cors" }),
+        fetch(`${BASE}/providers/${providerId}/reviews`, { cache: "no-store", mode: "cors" }),
       ]);
       setProvider(provRes.ok ? await provRes.json() : null);
       const revs: Review[] = revRes.ok ? await revRes.json() : [];
@@ -62,34 +65,39 @@ export default function ProviderDetailPage({ params }: { params: { id: string } 
     setError(null);
     try {
       const body = { stars: Number(stars), ...(comment.trim() ? { comment: comment.trim() } : {}) };
-      const res = await fetch(`${base}/providers/${providerId}/reviews`, {
+      const res = await fetch(`${BASE}/providers/${providerId}/reviews`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
+        mode: "cors",
       });
       if (!res.ok) {
         const txt = await res.text();
         throw new Error(txt || `Request failed: ${res.status}`);
       }
       setComment("");
-      await load(); // refresh provider + reviews
+      await load();
       alert("Review added!");
     } catch (e: any) {
-      setError(e.message || "Failed to submit review");
+      console.error("Submit error:", e);
+      setError((e?.message || "Failed to submit review") + " — check Network tab for details");
     } finally {
       setSubmitting(false);
     }
   }
 
   if (loading) return <main><p>Loading...</p></main>;
-  if (!provider) return <main><p>Provider not found.</p></main>;
+  if (!provider) return (
+    <main>
+      <p style={{ opacity: 0.6, fontSize: 12 }}>api: {BASE}</p>
+      <p>Provider not found.</p>
+    </main>
+  );
 
   return (
     <main>
-      {/* 🔎 Debug line (shows which URL is being called) */}
-      <p style={{ opacity: 0.6, fontSize: 12 }}>
-        debug: {process.env.NEXT_PUBLIC_API_URL}/providers/{providerId}
-      </p>
+      {/* debug helper */}
+      <p style={{ opacity: 0.6, fontSize: 12 }}>api: {BASE} · id: {providerId}</p>
 
       <a href="/providers" style={{ display: "inline-block", marginBottom: 12 }}>← Back to list</a>
 

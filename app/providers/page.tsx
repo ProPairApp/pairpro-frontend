@@ -45,14 +45,14 @@ export default function ProvidersPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // live (debounced) search by city + serviceType
+  // live (debounced) search
   useEffect(() => {
     const id = setTimeout(() => {
       fetchProviders({
         city: city.trim() || undefined,
         service_type: serviceType.trim() || undefined,
       });
-    }, 300); // 300ms debounce
+    }, 300);
     return () => clearTimeout(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [city, serviceType]);
@@ -105,7 +105,14 @@ export default function ProvidersPage() {
             {providers.map((p) => (
               <tr key={p.id}>
                 <td style={{ borderBottom: "1px solid #f0f0f0", padding: 8 }}>
-                  <strong>{p.name}</strong>
+                  <strong>
+                    <a
+                      href={`/providers/${p.id}`}
+                      style={{ color: "blue", textDecoration: "underline" }}
+                    >
+                      {p.name}
+                    </a>
+                  </strong>
                 </td>
                 <td style={{ borderBottom: "1px solid #f0f0f0", padding: 8 }}>{p.service_type ?? ""}</td>
                 <td style={{ borderBottom: "1px solid #f0f0f0", padding: 8 }}>{p.city ?? ""}</td>
@@ -117,6 +124,7 @@ export default function ProvidersPage() {
           </tbody>
         </table>
       )}
+
       <p style={{ marginTop: 16 }}>
         Want to add one? <a href="/providers/new">Add Provider</a>
       </p>

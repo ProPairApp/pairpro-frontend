@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useParams } from "next/navigation";
 
 const BASE =
   process.env.NEXT_PUBLIC_API_URL ??
-  "https://pairpro-backend-vyh1.onrender.com"; // ✅ fallback if env is missing
+  "https://pairpro-backend-vyh1.onrender.com"; // fallback so it always works
 
 type Provider = {
   id: number;
@@ -22,8 +23,11 @@ type Review = {
   created_at: string;
 };
 
-export default function ProviderDetailPage({ params }: { params: { id: string } }) {
-  const providerId = Number(params.id);
+export default function ProviderDetailPage() {
+  const params = useParams();
+  const idParam = Array.isArray(params?.id) ? params?.id[0] : (params?.id as string | undefined);
+  const providerId = Number.parseInt(String(idParam ?? ""), 10);
+
   const [provider, setProvider] = useState<Provider | null>(null);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
@@ -35,6 +39,11 @@ export default function ProviderDetailPage({ params }: { params: { id: string } 
   const reviewCount = useMemo(() => reviews.length, [reviews]);
 
   async function load() {
+    if (!Number.isFinite(providerId)) {
+      setError("Invalid provider id");
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
@@ -60,7 +69,7 @@ export default function ProviderDetailPage({ params }: { params: { id: string } 
 
   async function submitReview(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    if (submitting) return;
+    if (submitting || !Number.isFinite(providerId)) return;
     setSubmitting(true);
     setError(null);
     try {
@@ -76,7 +85,7 @@ export default function ProviderDetailPage({ params }: { params: { id: string } 
         throw new Error(txt || `Request failed: ${res.status}`);
       }
       setComment("");
-      await load();
+      await load(); // refresh
       alert("Review added!");
     } catch (e: any) {
       console.error("Submit error:", e);
@@ -86,18 +95,26 @@ export default function ProviderDetailPage({ params }: { params: { id: string } 
     }
   }
 
-  if (loading) return <main><p>Loading...</p></main>;
-  if (!provider) return (
-    <main>
-      <p style={{ opacity: 0.6, fontSize: 12 }}>api: {BASE}</p>
-      <p>Provider not found.</p>
-    </main>
-  );
+  // Helpful debug
+  const debug = `api: ${BASE} · idParam: ${idParam ?? "(none)"} · parsedId: ${
+    Number.isFinite(providerId) ? providerId : "NaN"
+  }`;
+
+  if (!Number.isFinite(providerId)) {
+    return (
+      <main>
+        <p style={{ opacity: 0.6, fontSize: 12 }}>{debug}</p>
+        <p>Invalid provider URL. Try going back to <a href="/providers">/providers</a> and clicking a name.</p>
+      </main>
+    );
+  }
+
+  if (loading) return <main><p style={{ opacity: 0.6, fontSize: 12 }}>{debug}</p><p>Loading...</p></main>;
+  if (!provider) return <main><p style={{ opacity: 0.6, fontSize: 12 }}>{debug}</p><p>Provider not found.</p></main>;
 
   return (
     <main>
-      {/* debug helper */}
-      <p style={{ opacity: 0.6, fontSize: 12 }}>api: {BASE} · id: {providerId}</p>
+      <p style={{ opacity: 0.6, fontSize: 12 }}>{debug}</p>
 
       <a href="/providers" style={{ display: "inline-block", marginBottom: 12 }}>← Back to list</a>
 

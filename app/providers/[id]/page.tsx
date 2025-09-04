@@ -1,6 +1,3 @@
-<p style={{opacity:0.6, fontSize:12}}>
-  debug: {process.env.NEXT_PUBLIC_API_URL}/providers/{providerId}
-</p>
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
@@ -44,7 +41,6 @@ export default function ProviderDetailPage({ params }: { params: { id: string } 
       ]);
       setProvider(provRes.ok ? await provRes.json() : null);
       const revs: Review[] = revRes.ok ? await revRes.json() : [];
-      // newest first
       revs.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
       setReviews(revs);
     } catch (e: any) {
@@ -60,7 +56,7 @@ export default function ProviderDetailPage({ params }: { params: { id: string } 
   }, [providerId]);
 
   async function submitReview(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault(); // <-- important: prevent page nav
+    e.preventDefault();
     if (submitting) return;
     setSubmitting(true);
     setError(null);
@@ -76,7 +72,7 @@ export default function ProviderDetailPage({ params }: { params: { id: string } 
         throw new Error(txt || `Request failed: ${res.status}`);
       }
       setComment("");
-      await load(); // refresh provider + reviews (avg rating updates)
+      await load(); // refresh provider + reviews
       alert("Review added!");
     } catch (e: any) {
       setError(e.message || "Failed to submit review");
@@ -90,6 +86,11 @@ export default function ProviderDetailPage({ params }: { params: { id: string } 
 
   return (
     <main>
+      {/* 🔎 Debug line (shows which URL is being called) */}
+      <p style={{ opacity: 0.6, fontSize: 12 }}>
+        debug: {process.env.NEXT_PUBLIC_API_URL}/providers/{providerId}
+      </p>
+
       <a href="/providers" style={{ display: "inline-block", marginBottom: 12 }}>← Back to list</a>
 
       <h1 style={{ fontSize: 28, marginBottom: 4 }}>
@@ -105,12 +106,7 @@ export default function ProviderDetailPage({ params }: { params: { id: string } 
 
       <section style={{ marginTop: 24 }}>
         <h2 style={{ fontSize: 20 }}>Add a Review</h2>
-
-        {/* Important: The button will submit THIS form. We also explicitly set type="submit". */}
-        <form
-          onSubmit={submitReview}
-          style={{ display: "grid", gap: 10, maxWidth: 480, position: "relative" }}
-        >
+        <form onSubmit={submitReview} style={{ display: "grid", gap: 10, maxWidth: 480 }}>
           <label style={{ display: "grid", gap: 4 }}>
             Stars (1–5)
             <input
@@ -131,7 +127,7 @@ export default function ProviderDetailPage({ params }: { params: { id: string } 
               onChange={(e) => setComment(e.target.value)}
               placeholder="Share your experience…"
               rows={3}
-              style={{ padding: 8, border: "1px solid #ccc", borderRadius: 6, resize: "vertical" }}
+              style={{ padding: 8, border: "1px solid #ccc", borderRadius: 6 }}
             />
           </label>
 

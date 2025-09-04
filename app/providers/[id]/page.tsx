@@ -127,19 +127,19 @@ export default function ProviderDetailPage() {
     setComment("");
     await load();
     alert("Review added!");
-  } catch (err: any) {
-    // 3) fallback: even if fetch failed, check if the review actually saved
-    try {
-      const prev = beforeCount;
-      await load(); // refresh from server
-      const now = reviews.length;
-      if (now > prev) {
-        setComment("");
-        alert("Review added! (network was flaky, but your review is saved)");
-        setSubmitError(null);
-        return;
-      }
-    } catch {}
+ } catch (err: any) {
+  // check if review actually got saved
+  await load();
+  if (reviews.length > beforeCount) {
+    // review is there → success, no error
+    setComment("");
+    alert("Review added! (network was noisy, but it worked)");
+    setSubmitError(null);
+  } else {
+    console.error("Submit error:", err);
+    setSubmitError("Could not save review. Please try again.");
+  }
+}
 
     console.error("Submit error:", err);
     setSubmitError((err?.message || "Failed to submit review") + " — check Network tab for details");

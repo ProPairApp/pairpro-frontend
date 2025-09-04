@@ -1,3 +1,6 @@
+<p style={{opacity:0.6, fontSize:12}}>
+  debug: {process.env.NEXT_PUBLIC_API_URL}/providers/{providerId}
+</p>
 "use client";
 
 import { useEffect, useMemo, useState } from "react";

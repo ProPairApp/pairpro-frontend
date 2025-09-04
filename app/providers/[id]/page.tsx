@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 type Provider = {
   id: number;
@@ -26,9 +26,14 @@ export default function ProviderDetailPage({ params }: { params: { id: string } 
   const [loading, setLoading] = useState(true);
   const [stars, setStars] = useState<string>("5");
   const [comment, setComment] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const reviewCount = useMemo(() => reviews.length, [reviews]);
 
   async function load() {
     setLoading(true);
+    setError(null);
     try {
       const [provRes, revRes] = await Promise.all([
         fetch(`${base}/providers/${providerId}`, { cache: "no-store" }),
@@ -39,6 +44,8 @@ export default function ProviderDetailPage({ params }: { params: { id: string } 
       // newest first
       revs.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
       setReviews(revs);
+    } catch (e: any) {
+      setError(e.message || "Failed to load");
     } finally {
       setLoading(false);
     }
@@ -49,21 +56,29 @@ export default function ProviderDetailPage({ params }: { params: { id: string } 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [providerId]);
 
-  async function submitReview(e: React.FormEvent) {
-    e.preventDefault();
-    const body = { stars: Number(stars), ...(comment.trim() ? { comment: comment.trim() } : {}) };
-    const res = await fetch(`${base}/providers/${providerId}/reviews`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-    if (res.ok) {
+  async function submitReview(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault(); // <-- important: prevent page nav
+    if (submitting) return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      const body = { stars: Number(stars), ...(comment.trim() ? { comment: comment.trim() } : {}) };
+      const res = await fetch(`${base}/providers/${providerId}/reviews`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) {
+        const txt = await res.text();
+        throw new Error(txt || `Request failed: ${res.status}`);
+      }
       setComment("");
       await load(); // refresh provider + reviews (avg rating updates)
       alert("Review added!");
-    } else {
-      const txt = await res.text();
-      alert("Failed: " + txt);
+    } catch (e: any) {
+      setError(e.message || "Failed to submit review");
+    } finally {
+      setSubmitting(false);
     }
   }
 
@@ -74,7 +89,12 @@ export default function ProviderDetailPage({ params }: { params: { id: string } 
     <main>
       <a href="/providers" style={{ display: "inline-block", marginBottom: 12 }}>← Back to list</a>
 
-      <h1 style={{ fontSize: 28, marginBottom: 4 }}>{provider.name}</h1>
+      <h1 style={{ fontSize: 28, marginBottom: 4 }}>
+        {provider.name}{" "}
+        <span style={{ fontSize: 16, fontWeight: 400, opacity: 0.7 }}>
+          (Reviews: {reviewCount})
+        </span>
+      </h1>
       <p style={{ margin: 0 }}>
         {provider.service_type || "—"} · {provider.city || "—"} ·{" "}
         {typeof provider.rating === "number" ? `⭐ ${provider.rating.toFixed(1)}` : "No rating yet"}
@@ -82,7 +102,12 @@ export default function ProviderDetailPage({ params }: { params: { id: string } 
 
       <section style={{ marginTop: 24 }}>
         <h2 style={{ fontSize: 20 }}>Add a Review</h2>
-        <form onSubmit={submitReview} style={{ display: "grid", gap: 10, maxWidth: 480 }}>
+
+        {/* Important: The button will submit THIS form. We also explicitly set type="submit". */}
+        <form
+          onSubmit={submitReview}
+          style={{ display: "grid", gap: 10, maxWidth: 480, position: "relative" }}
+        >
           <label style={{ display: "grid", gap: 4 }}>
             Stars (1–5)
             <input
@@ -95,6 +120,7 @@ export default function ProviderDetailPage({ params }: { params: { id: string } 
               required
             />
           </label>
+
           <label style={{ display: "grid", gap: 4 }}>
             Comment (optional)
             <textarea
@@ -102,15 +128,26 @@ export default function ProviderDetailPage({ params }: { params: { id: string } 
               onChange={(e) => setComment(e.target.value)}
               placeholder="Share your experience…"
               rows={3}
-              style={{ padding: 8, border: "1px solid #ccc", borderRadius: 6 }}
+              style={{ padding: 8, border: "1px solid #ccc", borderRadius: 6, resize: "vertical" }}
             />
           </label>
+
           <button
             type="submit"
-            style={{ padding: "10px 14px", borderRadius: 8, border: "none", background: "black", color: "white" }}
+            disabled={submitting}
+            style={{
+              padding: "10px 14px",
+              borderRadius: 8,
+              border: "none",
+              background: submitting ? "#666" : "black",
+              color: "white",
+              cursor: submitting ? "not-allowed" : "pointer",
+            }}
           >
-            Submit Review
+            {submitting ? "Submitting…" : "Submit Review"}
           </button>
+
+          {error && <p style={{ color: "crimson" }}>Error: {error}</p>}
         </form>
       </section>
 

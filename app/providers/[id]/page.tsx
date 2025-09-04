@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 
 const BASE =
   process.env.NEXT_PUBLIC_API_URL ??
-  "https://pairpro-backend-vyh1.onrender.com";
+  "https://pairpro-backend-vyh1.onrender.com"; // fallback so it always works
 
 type Provider = {
   id: number;
@@ -37,7 +37,7 @@ export default function ProviderDetailPage() {
 
   const [submitting, setSubmitting] = useState(false);
 
-  // new: capture precise errors
+  // precise errors for load + submit (for real failures only)
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loadDebug, setLoadDebug] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -45,6 +45,25 @@ export default function ProviderDetailPage() {
   const reviewCount = useMemo(() => reviews.length, [reviews]);
   const provUrl = `${BASE}/providers/${providerId}`;
   const revsUrl = `${BASE}/providers/${providerId}/reviews`;
+
+  function sortNewestFirst(arr: Review[]) {
+    return [...arr].sort(
+      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    );
+  }
+
+  async function fetchProvider(): Promise<Provider | null> {
+    const res = await fetch(provUrl, { cache: "no-store", mode: "cors" });
+    if (!res.ok) return null;
+    return res.json();
+  }
+
+  async function fetchReviews(): Promise<Review[]> {
+    const res = await fetch(revsUrl, { cache: "no-store", mode: "cors" });
+    if (!res.ok) return [];
+    const data: Review[] = await res.json();
+    return sortNewestFirst(data);
+  }
 
   async function load() {
     if (!Number.isFinite(providerId)) {
@@ -56,30 +75,12 @@ export default function ProviderDetailPage() {
     setLoadError(null);
     setLoadDebug(null);
     try {
-      const [provRes, revRes] = await Promise.all([
-        fetch(provUrl, { cache: "no-store", mode: "cors" }),
-        fetch(revsUrl, { cache: "no-store", mode: "cors" }),
-      ]);
-
-      if (!provRes.ok) {
-        const txt = await provRes.text().catch(() => "");
-        const msg = `GET ${provUrl} → ${provRes.status} ${provRes.statusText} ${txt ? `| body: ${txt}` : ""}`;
+      const [prov, revs] = await Promise.all([fetchProvider(), fetchReviews()]);
+      setProvider(prov);
+      setReviews(revs);
+      if (!prov) {
         setLoadError("Provider load failed");
-        setLoadDebug(msg);
-        setProvider(null);
-      } else {
-        setProvider(await provRes.json());
-      }
-
-      if (!revRes.ok) {
-        const txt = await revRes.text().catch(() => "");
-        const msg = `GET ${revsUrl} → ${revRes.status} ${revRes.statusText} ${txt ? `| body: ${txt}` : ""}`;
-        setLoadDebug((prev) => (prev ? prev + " || " + msg : msg));
-        setReviews([]);
-      } else {
-        const revs: Review[] = await revRes.json();
-        revs.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-        setReviews(revs);
+        setLoadDebug(`GET ${provUrl} → not ok`);
       }
     } catch (e: any) {
       setLoadError(e?.message || "Network error during load");
@@ -94,59 +95,67 @@ export default function ProviderDetailPage() {
   }, [providerId]);
 
   async function submitReview(e: React.FormEvent<HTMLFormElement>) {
-  e.preventDefault();
-  if (submitting || !Number.isFinite(providerId)) return;
+    e.preventDefault();
+    if (submitting || !Number.isFinite(providerId)) return;
 
-  setSubmitting(true);
-  setSubmitError(null);
-
-  // 1) snapshot current count (to detect success even if fetch throws)
-  const beforeCount = reviews.length;
-
-  try {
-    const body = { stars: Number(stars), ...(comment.trim() ? { comment: comment.trim() } : {}) };
-
-    // keepalive helps avoid "fetch aborted" when the tab is busy
-    const res = await fetch(`${BASE}/providers/${providerId}/reviews`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-      mode: "cors",
-      keepalive: true,
-      cache: "no-store",
-    });
-
-    if (!res.ok) {
-      // try to read the body for a clearer error
-      let txt = "";
-      try { txt = await res.text(); } catch {}
-      throw new Error(`POST ${res.status} ${res.statusText}${txt ? ` | ${txt}` : ""}`);
-    }
-
-    // 2) success path
-    setComment("");
-    await load();
-    alert("Review added!");
- } catch (err: any) {
-  // check if review actually got saved
-  await load();
-  if (reviews.length > beforeCount) {
-    // review is there → success, no error
-    setComment("");
-    alert("Review added! (network was noisy, but it worked)");
+    setSubmitting(true);
     setSubmitError(null);
-  } else {
-    console.error("Submit error:", err);
-    setSubmitError("Could not save review. Please try again.");
-  }
-}
 
-    console.error("Submit error:", err);
-    setSubmitError((err?.message || "Failed to submit review") + " — check Network tab for details");
-  } finally {
-    setSubmitting(false);
+    // Snapshot the current count (from state)
+    const beforeCount = reviews.length;
+
+    try {
+      const body = { stars: Number(stars), ...(comment.trim() ? { comment: comment.trim() } : {}) };
+
+      // keepalive reduces “aborted” fetches; no-store avoids caching
+      const res = await fetch(revsUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+        mode: "cors",
+        keepalive: true,
+        cache: "no-store",
+      });
+
+      if (!res.ok) {
+        // Try to read body for clearer message
+        let txt = "";
+        try { txt = await res.text(); } catch {}
+        throw new Error(`POST ${res.status} ${res.statusText}${txt ? ` | ${txt}` : ""}`);
+      }
+
+      // Success path
+      setComment("");
+      // Reload both provider (for avg rating) and reviews
+      const [prov, revs] = await Promise.all([fetchProvider(), fetchReviews()]);
+      if (prov) setProvider(prov);
+      setReviews(revs);
+      alert("Review added!");
+    } catch (err: any) {
+      // Even if fetch threw, check the server truth directly:
+      try {
+        const direct = await fetchReviews(); // not using state; fresh from server
+        if (direct.length > beforeCount) {
+          // Review saved successfully — treat as success
+          setComment("");
+          setReviews(direct);
+          // refresh provider average too
+          const prov = await fetchProvider();
+          if (prov) setProvider(prov);
+          alert("Review added! (network was noisy, but it worked)");
+          setSubmitError(null);
+          return;
+        }
+      } catch { /* ignore */ }
+
+      // Real failure
+      console.error("Submit error:", err);
+      setSubmitError("Could not save review. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
   }
-}
+
   const debugTop = `api: ${BASE} · idParam: ${idParam ?? "(none)"} · parsedId: ${
     Number.isFinite(providerId) ? providerId : "NaN"
   }`;

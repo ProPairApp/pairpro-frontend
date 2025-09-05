@@ -31,7 +31,7 @@ export default function ProviderDetailPage({ params }: { params: { id: string } 
   const [comment, setComment] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  // ✅ you were missing these lines:
+  // ✅ this line is REQUIRED (it’s what the error says is missing)
   const [error, setError] = useState<string | null>(null);
 
   const reviewCount = useMemo(() => reviews.length, [reviews]);
@@ -60,7 +60,7 @@ export default function ProviderDetailPage({ params }: { params: { id: string } 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [providerId]);
 
-  // Optimistic submit: no follow-up fetch to avoid “Failed to fetch”
+  // Optimistic submit (no follow-up fetch to avoid “Failed to fetch”)
   async function submitReview(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (submitting) return;

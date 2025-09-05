@@ -88,74 +88,44 @@ export default function ProviderDetailPage() {
       setLoading(false);
     }
   }
-
   useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [providerId]);
 
-  async function submitReview(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    if (submitting || !Number.isFinite(providerId)) return;
-
-    setSubmitting(true);
-    setSubmitError(null);
-
-    // Snapshot the current count (from state)
-    const beforeCount = reviews.length;
-
-    try {
-      const body = { stars: Number(stars), ...(comment.trim() ? { comment: comment.trim() } : {}) };
-
-      // keepalive reduces “aborted” fetches; no-store avoids caching
-      const res = await fetch(revsUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-        mode: "cors",
-        keepalive: true,
-        cache: "no-store",
-      });
-
-      if (!res.ok) {
-        // Try to read body for clearer message
-        let txt = "";
-        try { txt = await res.text(); } catch {}
-        throw new Error(`POST ${res.status} ${res.statusText}${txt ? ` | ${txt}` : ""}`);
-      }
-
-      // Success path
-      setComment("");
-      // Reload both provider (for avg rating) and reviews
-      const [prov, revs] = await Promise.all([fetchProvider(), fetchReviews()]);
-      if (prov) setProvider(prov);
-      setReviews(revs);
-      alert("Review added!");
-    } catch (err: any) {
-      // Even if fetch threw, check the server truth directly:
-      try {
-        const direct = await fetchReviews(); // not using state; fresh from server
-        if (direct.length > beforeCount) {
-          // Review saved successfully — treat as success
-          setComment("");
-          setReviews(direct);
-          // refresh provider average too
-          const prov = await fetchProvider();
-          if (prov) setProvider(prov);
-          alert("Review added! (network was noisy, but it worked)");
-          setSubmitError(null);
-          return;
-        }
-      } catch { /* ignore */ }
-
-      // Real failure
-      console.error("Submit error:", err);
-      setSubmitError("Could not save review. Please try again.");
-    } finally {
-      setSubmitting(false);
+async function submitReview(e: React.FormEvent<HTMLFormElement>) {
+  e.preventDefault();
+  if (submitting) return;
+  setSubmitting(true);
+  setError(null);
+  try {
+    const body = { stars: Number(stars), ...(comment.trim() ? { comment: comment.trim() } : {}) };
+    const res = await fetch(`${base}/providers/${providerId}/reviews`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) {
+      const txt = await res.text().catch(() => "");
+      throw new Error(txt || `Request failed: ${res.status}`);
     }
-  }
 
+    // ✅ POST worked — tell the user now
+    alert("Review added!");
+    setComment("");
+
+    // 🔄 Try to refresh, but don't error out if it fails
+    try {
+      await load();
+    } catch {
+      // ignore; page will still have the new review on next navigation/refresh
+    }
+  } catch (e: any) {
+    setError(e.message || "Failed to submit review");
+  } finally {
+    setSubmitting(false);
+  }
+}
   const debugTop = `api: ${BASE} · idParam: ${idParam ?? "(none)"} · parsedId: ${
     Number.isFinite(providerId) ? providerId : "NaN"
   }`;

@@ -26,11 +26,16 @@ export default function NewProviderPage() {
 
     // Send to your backend
     const base = process.env.NEXT_PUBLIC_API_URL!;
-    const res = await fetch(`${base}/providers`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
+    const token = typeof window !== "undefined" ? localStorage.getItem("pairpro_token") : null;
+
+const res = await fetch(`${base}/providers`, {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  },
+  body: JSON.stringify(body),
+});
 
     if (res.ok) {
       alert("Provider saved!");

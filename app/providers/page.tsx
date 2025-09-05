@@ -2,10 +2,6 @@
 
 import { useEffect, useState } from "react";
 
-const BASE =
-  process.env.NEXT_PUBLIC_API_URL ??
-  "https://pairpro-backend-vyh1.onrender.com"; // ✅ fallback if env is missing
-
 type Provider = {
   id: number;
   name: string;
@@ -14,12 +10,21 @@ type Provider = {
   city?: string | null;
 };
 
+type Stats = {
+  provider_id: number;
+  review_count: number;
+  avg_stars: number | null;
+};
+
 export default function ProvidersPage() {
   const [providers, setProviders] = useState<Provider[]>([]);
+  const [stats, setStats] = useState<Record<number, Stats>>({});
   const [loading, setLoading] = useState(false);
   const [city, setCity] = useState("");
   const [serviceType, setServiceType] = useState("");
   const [error, setError] = useState<string | null>(null);
+
+  const base = process.env.NEXT_PUBLIC_API_URL!;
 
   async function fetchProviders(filters: { city?: string; service_type?: string } = {}) {
     setLoading(true);
@@ -28,25 +33,42 @@ export default function ProvidersPage() {
       const params = new URLSearchParams();
       if (filters.city) params.append("city", filters.city);
       if (filters.service_type) params.append("service_type", filters.service_type);
-
-      const url = `${BASE}/providers${params.toString() ? `?${params.toString()}` : ""}`;
-      const res = await fetch(url, { cache: "no-store", mode: "cors" });
+      const url = `${base}/providers${params.toString() ? `?${params.toString()}` : ""}`;
+      const res = await fetch(url, { cache: "no-store" });
       if (!res.ok) throw new Error(`Request failed: ${res.status}`);
-      const data = await res.json();
+      const data: Provider[] = await res.json();
       setProviders(Array.isArray(data) ? data : []);
+
+      // fetch stats for each provider (simple & fine for small lists)
+      const statsEntries = await Promise.all(
+        (Array.isArray(data) ? data : []).map(async (p) => {
+          try {
+            const sres = await fetch(`${base}/providers/${p.id}/stats`, { cache: "no-store" });
+            if (!sres.ok) return [p.id, { provider_id: p.id, review_count: 0, avg_stars: null }] as const;
+            const sjson: Stats = await sres.json();
+            return [p.id, sjson] as const;
+          } catch {
+            return [p.id, { provider_id: p.id, review_count: 0, avg_stars: null }] as const;
+          }
+        })
+      );
+      setStats(Object.fromEntries(statsEntries));
     } catch (e: any) {
       setError(e.message || "Failed to load providers");
       setProviders([]);
+      setStats({});
     } finally {
       setLoading(false);
     }
   }
 
+  // initial load
   useEffect(() => {
     fetchProviders();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // live (debounced) search
   useEffect(() => {
     const id = setTimeout(() => {
       fetchProviders({
@@ -60,10 +82,12 @@ export default function ProvidersPage() {
 
   return (
     <main>
-      {/* debug helper */}
-      <p style={{ opacity: 0.6, fontSize: 12 }}>api: {BASE}</p>
-
       <h1 style={{ fontSize: 28, marginBottom: 12 }}>Browse Providers</h1>
+
+      {/* optional tiny debug line */}
+      <p style={{ opacity: 0.6, fontSize: 12 }}>
+        debug: {process.env.NEXT_PUBLIC_API_URL}/providers
+      </p>
 
       <div style={{ display: "flex", gap: 10, marginBottom: 16 }}>
         <input
@@ -96,35 +120,42 @@ export default function ProvidersPage() {
       ) : providers.length === 0 ? (
         <p>No providers found.</p>
       ) : (
-        <table style={{ borderCollapse: "collapse", width: "100%", maxWidth: 800 }}>
+        <table style={{ borderCollapse: "collapse", width: "100%", maxWidth: 900 }}>
           <thead>
             <tr>
               <th style={{ textAlign: "left", borderBottom: "1px solid #ddd", padding: 8 }}>Name</th>
               <th style={{ textAlign: "left", borderBottom: "1px solid #ddd", padding: 8 }}>Service</th>
               <th style={{ textAlign: "left", borderBottom: "1px solid #ddd", padding: 8 }}>City</th>
               <th style={{ textAlign: "left", borderBottom: "1px solid #ddd", padding: 8 }}>Rating</th>
+              <th style={{ textAlign: "left", borderBottom: "1px solid #ddd", padding: 8 }}>Reviews</th>
             </tr>
           </thead>
           <tbody>
-            {providers.map((p) => (
-              <tr key={p.id}>
-                <td style={{ borderBottom: "1px solid #f0f0f0", padding: 8 }}>
-                  <strong>
-                    <a
-                      href={`/providers/${p.id}`}
-                      style={{ color: "blue", textDecoration: "underline" }}
-                    >
-                      {p.name}
-                    </a>
-                  </strong>
-                </td>
-                <td style={{ borderBottom: "1px solid #f0f0f0", padding: 8 }}>{p.service_type ?? ""}</td>
-                <td style={{ borderBottom: "1px solid #f0f0f0", padding: 8 }}>{p.city ?? ""}</td>
-                <td style={{ borderBottom: "1px solid #f0f0f0", padding: 8 }}>
-                  {typeof p.rating === "number" ? `⭐ ${p.rating}` : ""}
-                </td>
-              </tr>
-            ))}
+            {providers.map((p) => {
+              const s = stats[p.id];
+              return (
+                <tr key={p.id}>
+                  <td style={{ borderBottom: "1px solid #f0f0f0", padding: 8 }}>
+                    <strong>
+                      <a
+                        href={`/providers/${p.id}`}
+                        style={{ color: "blue", textDecoration: "underline" }}
+                      >
+                        {p.name}
+                      </a>
+                    </strong>
+                  </td>
+                  <td style={{ borderBottom: "1px solid #f0f0f0", padding: 8 }}>{p.service_type ?? ""}</td>
+                  <td style={{ borderBottom: "1px solid #f0f0f0", padding: 8 }}>{p.city ?? ""}</td>
+                  <td style={{ borderBottom: "1px solid #f0f0f0", padding: 8 }}>
+                    {typeof p.rating === "number" ? `⭐ ${p.rating.toFixed(1)}` : ""}
+                  </td>
+                  <td style={{ borderBottom: "1px solid #f0f0f0", padding: 8 }}>
+                    {s ? `${s.review_count}` : "—"}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       )}

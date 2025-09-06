@@ -1,29 +1,31 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
-useEffect(() => {
-  const token = typeof window !== "undefined" ? localStorage.getItem("pairpro_token") : null;
-  if (!token) {
-    alert("Please log in as a provider to add your profile.");
-    window.location.href = "/auth/login";
-  }
-}, []);
 export default function NewProviderPage() {
   const [name, setName] = useState("");
   const [rating, setRating] = useState<string>("");
   const [serviceType, setServiceType] = useState("");
   const [city, setCity] = useState("");
 
+  // ✅ token guard lives INSIDE the component
+  useEffect(() => {
+    const token =
+      typeof window !== "undefined" ? localStorage.getItem("pairpro_token") : null;
+    if (!token) {
+      alert("Please log in as a provider to add your profile.");
+      window.location.href = "/auth/login";
+    }
+  }, []);
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-
     if (!name.trim()) {
       alert("Please enter a provider name.");
       return;
     }
 
-    // Build the request body with snake_case keys the backend expects
+    const base = process.env.NEXT_PUBLIC_API_URL!;
     const body: any = {
       name: name.trim(),
     };
@@ -31,18 +33,18 @@ export default function NewProviderPage() {
     if (serviceType.trim() !== "") body.service_type = serviceType.trim();
     if (city.trim() !== "") body.city = city.trim();
 
-    // Send to your backend
-    const base = process.env.NEXT_PUBLIC_API_URL!;
-    const token = typeof window !== "undefined" ? localStorage.getItem("pairpro_token") : null;
+    // ✅ include token header if present
+    const token =
+      typeof window !== "undefined" ? localStorage.getItem("pairpro_token") : null;
 
-const res = await fetch(`${base}/providers`, {
-  method: "POST",
-  headers: {
-    "Content-Type": "application/json",
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-  },
-  body: JSON.stringify(body),
-});
+    const res = await fetch(`${base}/providers`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify(body),
+    });
 
     if (res.ok) {
       alert("Provider saved!");
@@ -50,6 +52,8 @@ const res = await fetch(`${base}/providers`, {
       setRating("");
       setServiceType("");
       setCity("");
+      // optional: redirect to dashboard
+      // window.location.href = "/dashboard";
     } else {
       const msg = await res.text();
       alert("Failed to save provider: " + msg);
@@ -59,6 +63,7 @@ const res = await fetch(`${base}/providers`, {
   return (
     <main>
       <h1 style={{ fontSize: 24, marginBottom: 12 }}>Add Provider</h1>
+
       <form onSubmit={handleSubmit} style={{ display: "grid", gap: 10, maxWidth: 420 }}>
         <label style={{ display: "grid", gap: 4 }}>
           Name

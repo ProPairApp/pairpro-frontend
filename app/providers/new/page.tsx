@@ -1,13 +1,5 @@
 "use client";
 
-import Header from "../components/Header";
-// ...
-return (
-  <>
-    <Header />
-    <main>...</main>
-  </>
-);
 import { useEffect, useState } from "react";
 
 export default function NewProviderPage() {
@@ -16,7 +8,7 @@ export default function NewProviderPage() {
   const [serviceType, setServiceType] = useState("");
   const [city, setCity] = useState("");
 
-  // ✅ token guard lives INSIDE the component
+  // 🔐 Guard: must be INSIDE the component
   useEffect(() => {
     const token =
       typeof window !== "undefined" ? localStorage.getItem("pairpro_token") : null;
@@ -34,14 +26,11 @@ export default function NewProviderPage() {
     }
 
     const base = process.env.NEXT_PUBLIC_API_URL!;
-    const body: any = {
-      name: name.trim(),
-    };
+    const body: any = { name: name.trim() };
     if (rating !== "") body.rating = Number(rating);
     if (serviceType.trim() !== "") body.service_type = serviceType.trim();
     if (city.trim() !== "") body.city = city.trim();
 
-    // ✅ include token header if present
     const token =
       typeof window !== "undefined" ? localStorage.getItem("pairpro_token") : null;
 
@@ -60,8 +49,7 @@ export default function NewProviderPage() {
       setRating("");
       setServiceType("");
       setCity("");
-      // optional: redirect to dashboard
-      // window.location.href = "/dashboard";
+      // window.location.href = "/dashboard"; // optional
     } else {
       const msg = await res.text();
       alert("Failed to save provider: " + msg);

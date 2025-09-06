@@ -8,8 +8,14 @@ export default function LogoutPage() {
       localStorage.removeItem("pairpro_token");
       alert("You are signed out.");
     } finally {
-      window.location.href = "/"; // send them home (or /providers)
+      window.location.href = "/"; // or "/providers"
     }
   }, []);
-  return <main><p>Signing you out…</p></main>;
+
+  return (
+    <main>
+      <p>Signing you out…</p>
+      <p><a href="/">Go home</a></p>
+    </main>
+  );
 }

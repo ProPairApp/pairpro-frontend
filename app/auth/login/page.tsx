@@ -20,10 +20,7 @@ export default function LoginPage() {
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body: form.toString(),
       });
-      if (!res.ok) {
-        const t = await res.text();
-        throw new Error(t || `Error ${res.status}`);
-      }
+      if (!res.ok) throw new Error(await res.text());
       const data = await res.json();
       localStorage.setItem("pairpro_token", data.access_token);
       alert("Logged in! You can now add your provider profile.");
@@ -37,23 +34,11 @@ export default function LoginPage() {
     <main>
       <h1 style={{ marginBottom: 12 }}>Log in</h1>
       <form onSubmit={onSubmit} style={{ display: "grid", gap: 10, maxWidth: 360 }}>
-        <input
-          placeholder="Email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          style={{ padding: 8, border: "1px solid #ccc", borderRadius: 6 }}
-        />
-        <input
-          placeholder="Password"
-          type="password"
-          value={pw}
-          onChange={(e) => setPw(e.target.value)}
-          style={{ padding: 8, border: "1px solid #ccc", borderRadius: 6 }}
-        />
-        <button
-          type="submit"
-          style={{ padding: "10px 14px", border: "none", borderRadius: 8, background: "black", color: "white" }}
-        >
+        <input placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)}
+               style={{ padding: 8, border: "1px solid #ccc", borderRadius: 6 }} />
+        <input placeholder="Password" type="password" value={pw} onChange={(e) => setPw(e.target.value)}
+               style={{ padding: 8, border: "1px solid #ccc", borderRadius: 6 }} />
+        <button type="submit" style={{ padding: "10px 14px", border: "none", borderRadius: 8, background: "black", color: "white" }}>
           Log in
         </button>
       </form>

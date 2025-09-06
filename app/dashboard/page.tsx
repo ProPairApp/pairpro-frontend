@@ -1,13 +1,5 @@
 "use client";
 
-import Header from "../components/Header";
-// ...
-return (
-  <>
-    <Header />
-    <main>...</main>
-  </>
-);
 import { useEffect, useState } from "react";
 import LogoutButton from "../components/LogoutButton";
 
@@ -25,17 +17,20 @@ export default function DashboardPage() {
   const [user, setUser] = useState<User | null>(null);
   const [mine, setMine] = useState<Provider[]>([]);
   const [loading, setLoading] = useState(true);
+  const [msg, setMsg] = useState<string | null>(null);
 
+  // ✅ useEffect must be INSIDE the component
   useEffect(() => {
-    const token = typeof window !== "undefined" ? localStorage.getItem("pairpro_token") : null;
+    const token =
+      typeof window !== "undefined" ? localStorage.getItem("pairpro_token") : null;
     if (!token) {
       alert("Please log in to view your dashboard.");
       window.location.href = "/auth/login";
       return;
     }
-
     (async () => {
       try {
+        // who am I?
         const meRes = await fetch(`${base}/auth/me`, {
           headers: { Authorization: `Bearer ${token}` },
           cache: "no-store",
@@ -52,44 +47,67 @@ export default function DashboardPage() {
           const rows: Provider[] = mineRes.ok ? await mineRes.json() : [];
           setMine(rows);
         }
-      } catch (e) {
-        console.error(e);
+      } catch (e: any) {
+        setMsg(e.message || "Failed to load");
       } finally {
         setLoading(false);
       }
     })();
   }, [base]);
 
-  if (loading) return <main><p>Loading…</p></main>;
+  if (loading) return <main><p>Loading dashboard…</p></main>;
   if (!user) return <main><p>Not logged in.</p></main>;
 
   return (
     <main>
-      <h1>Dashboard</h1>
-      <p>
+      <h1 style={{ marginBottom: 8 }}>Dashboard</h1>
+      <p style={{ opacity: 0.7, marginTop: 0 }}>
         Logged in as <strong>{user.email}</strong> ({user.role})
       </p>
 
-      <LogoutButton redirect="/" />
+      <p><LogoutButton redirect="/" /></p>
 
       {user.role === "provider" ? (
         <>
-          <h2>My Providers</h2>
+          <h2 style={{ marginTop: 24 }}>My Providers</h2>
+          <p><a href="/providers/new">+ Add Provider</a></p>
           {mine.length === 0 ? (
-            <p>No providers yet. <a href="/providers/new">Add one</a></p>
+            <p>No provider profiles yet.</p>
           ) : (
-            <ul>
-              {mine.map((p) => (
-                <li key={p.id}>
-                  <a href={`/providers/${p.id}`}>{p.name}</a> — {p.service_type} in {p.city}
-                </li>
-              ))}
-            </ul>
+            <table style={{ borderCollapse: "collapse", width: "100%", maxWidth: 900 }}>
+              <thead>
+                <tr>
+                  <th style={{ textAlign: "left", borderBottom: "1px solid #ddd", padding: 8 }}>Name</th>
+                  <th style={{ textAlign: "left", borderBottom: "1px solid #ddd", padding: 8 }}>Service</th>
+                  <th style={{ textAlign: "left", borderBottom: "1px solid #ddd", padding: 8 }}>City</th>
+                  <th style={{ textAlign: "left", borderBottom: "1px solid #ddd", padding: 8 }}>Rating</th>
+                </tr>
+              </thead>
+              <tbody>
+                {mine.map((p) => (
+                  <tr key={p.id}>
+                    <td style={{ borderBottom: "1px solid #f0f0f0", padding: 8 }}>
+                      <a href={`/providers/${p.id}`} style={{ textDecoration: "underline" }}>{p.name}</a>
+                    </td>
+                    <td style={{ borderBottom: "1px solid #f0f0f0", padding: 8 }}>{p.service_type ?? ""}</td>
+                    <td style={{ borderBottom: "1px solid #f0f0f0", padding: 8 }}>{p.city ?? ""}</td>
+                    <td style={{ borderBottom: "1px solid #f0f0f0", padding: 8 }}>
+                      {typeof p.rating === "number" ? `⭐ ${p.rating.toFixed(1)}` : ""}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           )}
         </>
       ) : (
-        <p>Welcome, client! Browse <a href="/providers">providers</a> and leave reviews.</p>
+        <>
+          <h2 style={{ marginTop: 24 }}>Welcome, Client!</h2>
+          <p>Browse providers on <a href="/providers">the directory</a> and leave reviews.</p>
+        </>
       )}
+
+      {msg && <p style={{ color: "crimson", marginTop: 16 }}>Error: {msg}</p>}
     </main>
   );
 }

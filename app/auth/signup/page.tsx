@@ -8,9 +8,12 @@ export default function SignupPage() {
   const base = process.env.NEXT_PUBLIC_API_URL!;
   const [email, setEmail] = useState("");
   const [pw, setPw] = useState("");
+  const [pw2, setPw2] = useState("");
   const [role, setRole] = useState<Role>("client");
   const [msg, setMsg] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [showPw, setShowPw] = useState(false);
+  const [showPw2, setShowPw2] = useState(false);
   const btnRef = useRef<HTMLButtonElement | null>(null);
 
   // focus first field for speed
@@ -37,6 +40,10 @@ export default function SignupPage() {
     }
     if (pw.length < 6) {
       setMsg("Password must be at least 6 characters.");
+      return;
+    }
+    if (pw !== pw2) {
+      setMsg("Passwords do not match.");
       return;
     }
 
@@ -98,7 +105,7 @@ export default function SignupPage() {
     <main>
       <h1 style={{ marginBottom: 12 }}>Create your account</h1>
 
-      <form onSubmit={onSubmit} style={{ display: "grid", gap: 10, maxWidth: 380 }}>
+      <form onSubmit={onSubmit} style={{ display: "grid", gap: 12, maxWidth: 420 }}>
         <label style={{ display: "grid", gap: 4 }}>
           Email
           <input
@@ -108,19 +115,55 @@ export default function SignupPage() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             style={{ padding: 10, border: "1px solid #ccc", borderRadius: 8 }}
+            required
           />
         </label>
 
         <label style={{ display: "grid", gap: 4 }}>
           Password
-          <input
-            type="password"
-            autoComplete="new-password"
-            value={pw}
-            onChange={(e) => setPw(e.target.value)}
-            style={{ padding: 10, border: "1px solid #ccc", borderRadius: 8 }}
-          />
+          <div style={{ display: "flex", gap: 8 }}>
+            <input
+              type={showPw ? "text" : "password"}
+              autoComplete="new-password"
+              value={pw}
+              onChange={(e) => setPw(e.target.value)}
+              style={{ flex: 1, padding: 10, border: "1px solid #ccc", borderRadius: 8 }}
+              minLength={6}
+              required
+            />
+            <button
+              type="button"
+              onClick={() => setShowPw((s) => !s)}
+              aria-pressed={showPw}
+              style={{ padding: "10px 12px", borderRadius: 8, border: "1px solid #ccc", background: "#f9f9f9", cursor: "pointer" }}
+            >
+              {showPw ? "Hide" : "Show"}
+            </button>
+          </div>
           <span style={{ fontSize: 12, opacity: 0.7 }}>At least 6 characters</span>
+        </label>
+
+        <label style={{ display: "grid", gap: 4 }}>
+          Confirm Password
+          <div style={{ display: "flex", gap: 8 }}>
+            <input
+              type={showPw2 ? "text" : "password"}
+              autoComplete="new-password"
+              value={pw2}
+              onChange={(e) => setPw2(e.target.value)}
+              style={{ flex: 1, padding: 10, border: "1px solid #ccc", borderRadius: 8 }}
+              minLength={6}
+              required
+            />
+            <button
+              type="button"
+              onClick={() => setShowPw2((s) => !s)}
+              aria-pressed={showPw2}
+              style={{ padding: "10px 12px", borderRadius: 8, border: "1px solid #ccc", background: "#f9f9f9", cursor: "pointer" }}
+            >
+              {showPw2 ? "Hide" : "Show"}
+            </button>
+          </div>
         </label>
 
         <label style={{ display: "grid", gap: 4 }}>

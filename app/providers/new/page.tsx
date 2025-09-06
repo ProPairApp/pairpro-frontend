@@ -54,11 +54,6 @@ export default function NewProviderPage() {
     <main>
       <h1 style={{ fontSize: 24, marginBottom: 12 }}>Add Provider</h1>
 
-      <p style={{ marginBottom: 8 }}>
-        Are you a new provider? <a href="/auth/login">Log in</a> or{" "}
-        <a href="/auth/signup">create an account</a> to add your profile.
-      </p>
-
       <form onSubmit={handleSubmit} style={{ display: "grid", gap: 10, maxWidth: 420 }}>
         <label style={{ display: "grid", gap: 4 }}>
           Name
@@ -119,10 +114,6 @@ export default function NewProviderPage() {
           Save Provider
         </button>
       </form>
-
-      <p style={{ marginTop: 16 }}>
-        After saving, visit <a href="/providers">/providers</a> to see it live.
-      </p>
     </main>
   );
 }

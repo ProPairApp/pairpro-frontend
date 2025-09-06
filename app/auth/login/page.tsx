@@ -11,7 +11,6 @@ export default function LoginPage() {
   const [submitting, setSubmitting] = useState(false);
   const btnRef = useRef<HTMLButtonElement | null>(null);
 
-  // Focus email for fast entry
   useEffect(() => {
     try {
       const el = document.querySelector<HTMLInputElement>('input[name="email"]');
@@ -27,12 +26,10 @@ export default function LoginPage() {
     setSubmitting(true);
 
     const controller = new AbortController();
-    const t = setTimeout(() => controller.abort(), 10_000); // 10s timeout
+    const t = setTimeout(() => controller.abort(), 10_000);
 
     try {
-      if (!email.trim() || !pw) {
-        throw new Error("Please enter email and password.");
-      }
+      if (!email.trim() || !pw) throw new Error("Please enter email and password.");
 
       const form = new URLSearchParams();
       form.set("username", email.trim());
@@ -53,14 +50,9 @@ export default function LoginPage() {
       const data = await res.json();
       localStorage.setItem("pairpro_token", data.access_token);
 
-      // Fast success path
       window.location.href = "/dashboard";
     } catch (err: any) {
-      if (err?.name === "AbortError") {
-        setMsg("Network is slow. Please try again.");
-      } else {
-        setMsg(err?.message || "Something went wrong.");
-      }
+      setMsg(err?.message || "Something went wrong.");
       setSubmitting(false);
       btnRef.current?.focus();
     } finally {
@@ -101,13 +93,7 @@ export default function LoginPage() {
               type="button"
               onClick={() => setShowPw((s) => !s)}
               aria-pressed={showPw}
-              style={{
-                padding: "10px 12px",
-                borderRadius: 8,
-                border: "1px solid #ccc",
-                background: "#f9f9f9",
-                cursor: "pointer",
-              }}
+              style={{ padding: "10px 12px", borderRadius: 8, border: "1px solid #ccc", background: "#f9f9f9", cursor: "pointer" }}
             >
               {showPw ? "Hide" : "Show"}
             </button>
@@ -130,18 +116,18 @@ export default function LoginPage() {
             transition: "transform 80ms ease",
             touchAction: "manipulation",
           }}
-          onMouseDown={(e) => {
-            (e.currentTarget as HTMLButtonElement).style.transform = "scale(0.98)";
-          }}
-          onMouseUp={(e) => {
-            (e.currentTarget as HTMLButtonElement).style.transform = "scale(1)";
-          }}
+          onMouseDown={(e) => { (e.currentTarget as HTMLButtonElement).style.transform = "scale(0.98)"; }}
+          onMouseUp={(e) => { (e.currentTarget as HTMLButtonElement).style.transform = "scale(1)"; }}
         >
           {submitting ? "Logging in…" : "Log in"}
         </button>
       </form>
 
       {msg && <p style={{ marginTop: 10, color: "crimson" }}>{msg}</p>}
+
+      <p style={{ marginTop: 12 }}>
+        <a href="/auth/forgot">Forgot password?</a>
+      </p>
 
       <p style={{ marginTop: 12 }}>
         No account? <a href="/auth/signup">Sign up</a>

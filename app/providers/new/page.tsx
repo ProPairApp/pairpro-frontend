@@ -2,6 +2,13 @@
 
 import { useState } from "react";
 
+useEffect(() => {
+  const token = typeof window !== "undefined" ? localStorage.getItem("pairpro_token") : null;
+  if (!token) {
+    alert("Please log in as a provider to add your profile.");
+    window.location.href = "/auth/login";
+  }
+}, []);
 export default function NewProviderPage() {
   const [name, setName] = useState("");
   const [rating, setRating] = useState<string>("");

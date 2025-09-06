@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 export default function NewProviderPage() {
   const [name, setName] = useState("");
@@ -8,20 +8,18 @@ export default function NewProviderPage() {
   const [serviceType, setServiceType] = useState("");
   const [city, setCity] = useState("");
 
-  // 🔐 Guard: must be INSIDE the component
-  useEffect(() => {
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!name.trim()) {
+      alert("Please enter a provider name.");
+      return;
+    }
+
     const token =
       typeof window !== "undefined" ? localStorage.getItem("pairpro_token") : null;
     if (!token) {
       alert("Please log in as a provider to add your profile.");
       window.location.href = "/auth/login";
-    }
-  }, []);
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!name.trim()) {
-      alert("Please enter a provider name.");
       return;
     }
 
@@ -31,14 +29,11 @@ export default function NewProviderPage() {
     if (serviceType.trim() !== "") body.service_type = serviceType.trim();
     if (city.trim() !== "") body.city = city.trim();
 
-    const token =
-      typeof window !== "undefined" ? localStorage.getItem("pairpro_token") : null;
-
     const res = await fetch(`${base}/providers`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify(body),
     });
@@ -59,6 +54,11 @@ export default function NewProviderPage() {
   return (
     <main>
       <h1 style={{ fontSize: 24, marginBottom: 12 }}>Add Provider</h1>
+
+      <p style={{ marginBottom: 8 }}>
+        Are you a new provider? <a href="/auth/login">Log in</a> or{" "}
+        <a href="/auth/signup">create an account</a> to add your profile.
+      </p>
 
       <form onSubmit={handleSubmit} style={{ display: "grid", gap: 10, maxWidth: 420 }}>
         <label style={{ display: "grid", gap: 4 }}>

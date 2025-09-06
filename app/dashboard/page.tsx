@@ -19,7 +19,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [msg, setMsg] = useState<string | null>(null);
 
-  // ✅ useEffect must be INSIDE the component
+  // ✅ useEffect is INSIDE the component
   useEffect(() => {
     const token =
       typeof window !== "undefined" ? localStorage.getItem("pairpro_token") : null;
@@ -28,6 +28,7 @@ export default function DashboardPage() {
       window.location.href = "/auth/login";
       return;
     }
+
     (async () => {
       try {
         // who am I?
@@ -35,7 +36,7 @@ export default function DashboardPage() {
           headers: { Authorization: `Bearer ${token}` },
           cache: "no-store",
         });
-        if (!meRes.ok) throw new Error("Not authenticated");
+        if (!meRes.ok) throw new Error(await meRes.text());
         const me: User = await meRes.json();
         setUser(me);
 

@@ -27,9 +27,9 @@ export default function ProviderDetailPage({ params }: { params: { id: string } 
   const [loading, setLoading] = useState(true);
 
   // form state
-  const [stars, setStars] = useState<string>("5");
-  const [comment, setComment] = useState("");
-  const [submitting, setSubmitting] = useState(false);
+const [stars, setStars] = useState<string>("5");
+const [comment, setComment] = useState("");
+const [submitting, setSubmitting] = useState(false);
 
   // ✅ this line is REQUIRED (it’s what the error says is missing)
   const [error, setError] = useState<string | null>(null);

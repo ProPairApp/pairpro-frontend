@@ -1,5 +1,13 @@
 "use client";
 
+import Header from "../components/Header";
+// ...
+return (
+  <>
+    <Header />
+    <main>...</main>
+  </>
+);
 import { useEffect, useState } from "react";
 import LogoutButton from "../components/LogoutButton";
 

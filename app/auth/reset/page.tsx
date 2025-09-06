@@ -40,7 +40,7 @@ export default function ResetPage() {
         const txt = await res.text();
         throw new Error(txt || "Reset failed");
       }
-      setDone(True := true)  # ignore ts highlight; actual JS below
+      setDone(true);
     } catch (err: any) {
       setMsg(err?.message || "Something went wrong.");
       btnRef.current?.focus();
@@ -75,9 +75,12 @@ export default function ResetPage() {
               minLength={6}
               required
             />
-            <button type="button" onClick={() => setShowPw(s => !s)}
+            <button
+              type="button"
+              onClick={() => setShowPw((s) => !s)}
               aria-pressed={showPw}
-              style={{ padding: "10px 12px", borderRadius: 8, border: "1px solid #ccc", background: "#f9f9f9", cursor: "pointer" }}>
+              style={{ padding: "10px 12px", borderRadius: 8, border: "1px solid #ccc", background: "#f9f9f9", cursor: "pointer" }}
+            >
               {showPw ? "Hide" : "Show"}
             </button>
           </div>
@@ -94,9 +97,12 @@ export default function ResetPage() {
               minLength={6}
               required
             />
-            <button type="button" onClick={() => setShowPw2(s => !s)}
+            <button
+              type="button"
+              onClick={() => setShowPw2((s) => !s)}
               aria-pressed={showPw2}
-              style={{ padding: "10px 12px", borderRadius: 8, border: "1px solid #ccc", background: "#f9f9f9", cursor: "pointer" }}>
+              style={{ padding: "10px 12px", borderRadius: 8, border: "1px solid #ccc", background: "#f9f9f9", cursor: "pointer" }}
+            >
               {showPw2 ? "Hide" : "Show"}
             </button>
           </div>

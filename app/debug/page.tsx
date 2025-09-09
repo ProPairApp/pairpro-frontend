@@ -32,7 +32,10 @@ export default function DebugPage() {
       <p><strong>Fetch /health</strong>: <code>{health}</code></p>
       <p><strong>Fetch /providers</strong>: <code style={{wordBreak:"break-all"}}>{prov}</code></p>
       {err && <p style={{color:"crimson"}}>Page error: {err}</p>}
-      <p style={{opacity:.7, marginTop:12}}>If <code>NEXT_PUBLIC_API_URL</code> shows “(unset)”, set it in Vercel → Project → Settings → Environment Variables and redeploy.</p>
+      <p style={{opacity:.7, marginTop:12}}>
+        If base shows “(unset)”, set it in Vercel → Project → Settings → Environment Variables:
+        <code> NEXT_PUBLIC_API_URL = https://pairpro-backend-vyh1.onrender.com</code> and redeploy.
+      </p>
     </main>
   );
 }

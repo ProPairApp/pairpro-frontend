@@ -33,7 +33,15 @@ export default function RootLayout({
             <a href="/providers/new">Add Provider</a>
             <a href="/jobs/new">Create Job</a>
             <a href="/dashboard">Dashboard</a>
-          </nav>
+         <nav style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+  <a href="/">Home</a>
+  <a href="/providers">Providers</a>
+  <a href="/providers/new">Add Provider</a>
+  <a href="/jobs/new">Create Job</a>
+  <a href="/dashboard">Dashboard</a>
+  <a href="/auth/login">Log in</a>
+  <a href="/auth/signup">Sign up</a>
+</nav>
         </header>
         {children}
         <footer style={{ marginTop: 48, opacity: 0.6 }}>

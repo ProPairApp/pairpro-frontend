@@ -19,6 +19,7 @@ export default function LoginPage() {
       const pw = passRef.current?.value || "";
       if (!email || !pw) throw new Error("Enter email and password");
 
+      // ✅ FastAPI OAuth2 expects x-www-form-urlencoded, not JSON
       const body = new URLSearchParams();
       body.set("username", email);
       body.set("password", pw);
@@ -30,7 +31,6 @@ export default function LoginPage() {
       });
 
       if (!r.ok) throw new Error(await r.text());
-
       const data = await r.json();
       localStorage.setItem("pairpro_token", data.access_token);
       window.location.href = "/dashboard";
@@ -55,7 +55,9 @@ export default function LoginPage() {
         </button>
       </form>
       {msg && <p style={{color:"crimson", marginTop:10}}>Error: {msg}</p>}
-      <p style={{marginTop:8}}><a href="/auth/signup">Create account</a></p>
+      <p style={{marginTop:8}}>
+        <a href="/auth/signup">Create account</a>
+      </p>
     </main>
   );
 }

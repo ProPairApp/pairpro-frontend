@@ -39,6 +39,35 @@ export default function SignupPage() {
     }
   }
 
+  @app.post("/auth/signup", response_model=UserOut)
+def signup(data: SignupIn, db: Session = Depends(get_db)):
+    try:
+        exists = db.query(User).filter(User.email == data.email.lower()).first()
+        if exists:
+            raise HTTPException(status_code=400, detail="Email already registered")
+        if data.role not in ("client", "provider"):
+            raise HTTPException(status_code=400, detail="Invalid role")
+        user = User(
+            email=data.email.lower(),
+            hashed_password=hash_password(data.password),
+            role=data.role,
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+        return UserOut(id=user.id, email=user.email, role=user.role)
+    except IntegrityError as ie:
+        db.rollback()
+        # Likely duplicate email or constraint
+        raise HTTPException(status_code=400, detail="Integrity error: possibly duplicate email")
+    except SQLAlchemyError as se:
+        db.rollback()
+        # DB/table/column issues will show here
+        raise HTTPException(status_code=500, detail=f"DB error: {str(se)}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Server error: {str(e)}")
+
+  
   return (
     <main>
       <h1>Sign up</h1>

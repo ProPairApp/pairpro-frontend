@@ -1,102 +1,51 @@
 "use client";
-
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
 type User = { id: number; email: string; role: "client" | "provider" };
 
 export default function DashboardPage() {
-  const base = process.env.NEXT_PUBLIC_API_URL!;
   const [user, setUser] = useState<User | null>(null);
-  const [checking, setChecking] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState("");
+  const router = useRouter();
 
   useEffect(() => {
-    async function run() {
-      try {
-        const token =
-          typeof window !== "undefined"
-            ? localStorage.getItem("pairpro_token")
-            : null;
-
-        if (!token) {
-          setChecking(false);
-          return; // not logged in
-        }
-
-        const r = await fetch(`${base}/auth/me`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-
-        if (!r.ok) {
-          // token invalid/expired/typo → treat as logged out
-          setChecking(false);
-          return;
-        }
-
-        const u = (await r.json()) as User;
-        setUser(u);
-      } catch (e: any) {
-        setError(e?.message || "Failed to fetch profile");
-      } finally {
-        setChecking(false);
-      }
+    const token = localStorage.getItem("pairpro_token");
+    if (!token) {
+      router.push("/auth/login");
+      return;
     }
-    run();
-  }, [base]);
 
-  if (checking) {
-    return <main>Checking your session…</main>;
-  }
+    fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/me`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(async (res) => {
+        if (!res.ok) throw new Error("Not logged in");
+        return res.json();
+      })
+      .then(setUser)
+      .catch(() => {
+        setError("Not logged in");
+        localStorage.removeItem("pairpro_token");
+        router.push("/auth/login");
+      });
+  }, [router]);
 
-  if (!user) {
-    return (
-      <main>
-        <h1>Not logged in</h1>
-        <p>
-          Please <a href="/auth/login">log in</a> or{" "}
-          <a href="/auth/signup">create an account</a>.
-        </p>
-      </main>
-    );
-  }
+  if (error) return <p>{error}</p>;
+  if (!user) return <p>Loading...</p>;
 
   return (
-    <main style={{ display: "grid", gap: 12 }}>
+    <main>
       <h1>Welcome, {user.email}</h1>
-      <p>
-        Role: <strong>{user.role}</strong>
-      </p>
-
-      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-        <a href="/providers" style={{ textDecoration: "underline" }}>
-          Browse Providers
-        </a>
-        <a href="/jobs/new" style={{ textDecoration: "underline" }}>
-          Create Job
-        </a>
-        <a href="/jobs/mine" style={{ textDecoration: "underline" }}>
-          My Hires
-        </a>
-      </div>
-
+      <p>Role: {user.role}</p>
       <button
         onClick={() => {
           localStorage.removeItem("pairpro_token");
-          window.location.href = "/auth/login";
-        }}
-        style={{
-          marginTop: 8,
-          padding: "8px 12px",
-          borderRadius: 8,
-          border: "1px solid #ddd",
-          background: "#fafafa",
-          cursor: "pointer",
+          router.push("/auth/login");
         }}
       >
         Sign out
       </button>
-
-      {error && <p style={{ color: "crimson" }}>Error: {error}</p>}
     </main>
   );
 }

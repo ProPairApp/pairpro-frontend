@@ -3,84 +3,100 @@
 import { useEffect, useState } from "react";
 
 type User = { id: number; email: string; role: "client" | "provider" };
-type Job = {
-  id: number; title: string; service_type: string; city: string;
-  description?: string | null; status: string; provider_id?: number | null; created_at: string;
-};
 
 export default function DashboardPage() {
   const base = process.env.NEXT_PUBLIC_API_URL!;
   const [user, setUser] = useState<User | null>(null);
-  const [jobs, setJobs] = useState<Job[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [msg, setMsg] = useState<string | null>(null);
+  const [checking, setChecking] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const token = localStorage.getItem("pairpro_token");
-    if (!token) { window.location.href = "/auth/login"; return; }
-    (async () => {
+    async function run() {
       try {
-        const meRes = await fetch(`${base}/auth/me`, { headers: { Authorization: `Bearer ${token}` } });
-        if (!meRes.ok) throw new Error(await meRes.text());
-        const me: User = await meRes.json();
-        setUser(me);
+        const token =
+          typeof window !== "undefined"
+            ? localStorage.getItem("pairpro_token")
+            : null;
 
-        const jobsRes = await fetch(`${base}/jobs/mine`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" });
-        if (!jobsRes.ok) throw new Error(await jobsRes.text());
-        setJobs(await jobsRes.json());
+        if (!token) {
+          setChecking(false);
+          return; // not logged in
+        }
+
+        const r = await fetch(`${base}/auth/me`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        if (!r.ok) {
+          // token invalid/expired/typo → treat as logged out
+          setChecking(false);
+          return;
+        }
+
+        const u = (await r.json()) as User;
+        setUser(u);
       } catch (e: any) {
-        setMsg(e?.message || "Failed to load");
+        setError(e?.message || "Failed to fetch profile");
       } finally {
-        setLoading(false);
+        setChecking(false);
       }
-    })();
+    }
+    run();
   }, [base]);
 
-  if (loading) return <main><p>Loading…</p></main>;
-  if (!user) return <main><p>Not logged in.</p></main>;
+  if (checking) {
+    return <main>Checking your session…</main>;
+  }
+
+  if (!user) {
+    return (
+      <main>
+        <h1>Not logged in</h1>
+        <p>
+          Please <a href="/auth/login">log in</a> or{" "}
+          <a href="/auth/signup">create an account</a>.
+        </p>
+      </main>
+    );
+  }
 
   return (
-    <main>
-      <h1 style={{ marginBottom: 8 }}>Dashboard</h1>
-      <p style={{ opacity: 0.7, marginTop: 0 }}>Logged in as <strong>{user.email}</strong> ({user.role})</p>
+    <main style={{ display: "grid", gap: 12 }}>
+      <h1>Welcome, {user.email}</h1>
+      <p>
+        Role: <strong>{user.role}</strong>
+      </p>
 
-      {user.role === "client" && (
-        <>
-          <p style={{ marginTop: 12 }}><a href="/jobs/new">+ Create a Job</a></p>
-          <h2 style={{ marginTop: 20 }}>My Hires (Jobs)</h2>
-          {jobs.length === 0 ? (
-            <p>No jobs yet.</p>
-          ) : (
-            <ul style={{ paddingLeft: 18 }}>
-              {jobs.map(j => (
-                <li key={j.id} style={{ marginBottom: 10 }}>
-                  <a href={`/jobs/${j.id}`}><strong>{j.title}</strong></a>
-                  {" — "}{j.service_type} in {j.city} — <em>{j.status}</em>
-                  {j.provider_id ? <> — Provider: <a href={`/providers/${j.provider_id}`}>#{j.provider_id}</a></> : null}
-                </li>
-              ))}
-            </ul>
-          )}
-        </>
-      )}
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+        <a href="/providers" style={{ textDecoration: "underline" }}>
+          Browse Providers
+        </a>
+        <a href="/jobs/new" style={{ textDecoration: "underline" }}>
+          Create Job
+        </a>
+        <a href="/jobs/mine" style={{ textDecoration: "underline" }}>
+          My Hires
+        </a>
+      </div>
 
-      {user.role === "provider" && (
-        <>
-          <h2 style={{ marginTop: 20 }}>Assigned Jobs</h2>
-          {jobs.length === 0 ? <p>No jobs assigned yet.</p> : (
-            <ul style={{ paddingLeft: 18 }}>
-              {jobs.map(j => (
-                <li key={j.id} style={{ marginBottom: 10 }}>
-                  <a href={`/jobs/${j.id}`}><strong>{j.title}</strong></a>
-                  {" — "}{j.service_type} in {j.city} — <em>{j.status}</em>
-                </li>
-              ))}
-            </ul>
-          )}
-        </>
-      )}
+      <button
+        onClick={() => {
+          localStorage.removeItem("pairpro_token");
+          window.location.href = "/auth/login";
+        }}
+        style={{
+          marginTop: 8,
+          padding: "8px 12px",
+          borderRadius: 8,
+          border: "1px solid #ddd",
+          background: "#fafafa",
+          cursor: "pointer",
+        }}
+      >
+        Sign out
+      </button>
 
-      {msg && <p style={{ color: "crimson", marginTop: 16 }}>Error: {msg}</p>}
+      {error && <p style={{ color: "crimson" }}>Error: {error}</p>}
     </main>
   );
 }

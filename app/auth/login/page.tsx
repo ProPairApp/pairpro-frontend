@@ -1,84 +1,61 @@
 "use client";
-
-import { useRef, useState } from "react";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
-  const base = process.env.NEXT_PUBLIC_API_URL!;
-  const emailRef = useRef<HTMLInputElement>(null);
-  const passRef = useRef<HTMLInputElement>(null);
-  const [msg, setMsg] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const router = useRouter();
 
-  async function handleLogin(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (loading) return;
-    setMsg(null);
-    setLoading(true);
+    setError("");
     try {
-      const email = emailRef.current?.value?.trim() || "";
-      const pw = passRef.current?.value || "";
-      if (!email || !pw) throw new Error("Enter email and password");
-
-      const body = new URLSearchParams();
-      body.set("username", email);
-      body.set("password", pw);
-
-      const r = await fetch(`${base}/auth/login`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body,
+        body: new URLSearchParams({
+          username: email,
+          password: password,
+        }),
       });
-      if (!r.ok) throw new Error(await r.text());
 
-      const data = await r.json();
-      // ✅ Save under the same key the dashboard expects
+      if (!res.ok) {
+        const txt = await res.text();
+        throw new Error(txt || "Login failed");
+      }
+
+      const data = await res.json();
       localStorage.setItem("pairpro_token", data.access_token);
-      window.location.href = "/dashboard";
-    } catch (e: any) {
-      setMsg(e?.message || "Failed to fetch");
-    } finally {
-      setLoading(false);
+
+      router.push("/dashboard");
+    } catch (err: any) {
+      setError(err.message);
     }
   }
 
   return (
     <main>
       <h1>Log in</h1>
-      <form onSubmit={handleLogin} style={{ display: "grid", gap: 10, maxWidth: 360 }}>
+      <form onSubmit={handleSubmit} style={{ display: "grid", gap: 10, maxWidth: 320 }}>
         <input
-          ref={emailRef}
           type="email"
-          placeholder="email@example.com"
-          autoComplete="email"
-          style={{ padding: 10, border: "1px solid #ccc", borderRadius: 8 }}
+          placeholder="Email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
         />
         <input
-          ref={passRef}
           type="password"
-          placeholder="password"
-          autoComplete="current-password"
-          style={{ padding: 10, border: "1px solid #ccc", borderRadius: 8 }}
+          placeholder="Password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          required
         />
-        <button
-          disabled={loading}
-          style={{
-            padding: "10px 14px",
-            background: "black",
-            color: "white",
-            border: "none",
-            borderRadius: 8,
-          }}
-        >
-          {loading ? "Signing in…" : "Sign in"}
-        </button>
+        <button type="submit">Log in</button>
       </form>
-      {msg && <p style={{ color: "crimson", marginTop: 10 }}>Error: {msg}</p>}
-      <p style={{ marginTop: 8 }}>
-        <a href="/auth/forgot">Forgot password?</a>
-      </p>
-      <p style={{ marginTop: 8 }}>
-        New here? <a href="/auth/signup">Create an account</a>
-      </p>
+      {error && <p style={{ color: "red" }}>{error}</p>}
     </main>
   );
 }

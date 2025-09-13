@@ -1,61 +1,62 @@
 "use client";
-import { useState } from "react";
+
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
+  const base = process.env.NEXT_PUBLIC_API_URL!;
   const router = useRouter();
+  const emailRef = useRef<HTMLInputElement>(null);
+  const passRef  = useRef<HTMLInputElement>(null);
+  const [msg, setMsg] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
-    setError("");
+    if (loading) return;
+    setMsg(null);
+    setLoading(true);
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/login`, {
+      const email = emailRef.current?.value.trim() || "";
+      const pw    = passRef.current?.value || "";
+      if (!email || !pw) throw new Error("Enter email and password");
+
+      const body = new URLSearchParams();
+      body.set("username", email);
+      body.set("password", pw);
+
+      const r = await fetch(`${base}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: new URLSearchParams({
-          username: email,
-          password: password,
-        }),
+        body,
       });
+      if (!r.ok) throw new Error(await r.text());
 
-      if (!res.ok) {
-        const txt = await res.text();
-        throw new Error(txt || "Login failed");
-      }
+      const data = await r.json();
 
-      const data = await res.json();
+      // ✅ IMPORTANT: store the token so the dashboard can read it
       localStorage.setItem("pairpro_token", data.access_token);
 
       router.push("/dashboard");
-    } catch (err: any) {
-      setError(err.message);
+    } catch (e: any) {
+      setMsg(e?.message || "Failed to fetch");
+    } finally {
+      setLoading(false);
     }
   }
 
   return (
     <main>
       <h1>Log in</h1>
-      <form onSubmit={handleSubmit} style={{ display: "grid", gap: 10, maxWidth: 320 }}>
-        <input
-          type="email"
-          placeholder="Email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-        />
-        <input
-          type="password"
-          placeholder="Password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-        />
-        <button type="submit">Log in</button>
+      <form onSubmit={handleLogin} style={{ display: "grid", gap: 10, maxWidth: 360 }}>
+        <input ref={emailRef} type="email" placeholder="email@example.com" autoComplete="email" />
+        <input ref={passRef} type="password" placeholder="password" autoComplete="current-password" />
+        <button disabled={loading}>{loading ? "Signing in…" : "Sign in"}</button>
       </form>
-      {error && <p style={{ color: "red" }}>{error}</p>}
+      {msg && <p style={{ color: "crimson", marginTop: 10 }}>Error: {msg}</p>}
+      <p style={{ marginTop: 8 }}>
+        New here? <a href="/auth/signup">Create an account</a>
+      </p>
     </main>
   );
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { api, API_BASE } from "../lib/api";   // <-- add
 
 type Provider = {
   id: number;
@@ -24,8 +25,6 @@ export default function ProvidersPage() {
   const [serviceType, setServiceType] = useState("");
   const [error, setError] = useState<string | null>(null);
 
-  const base = process.env.NEXT_PUBLIC_API_URL!;
-
   async function fetchProviders(filters: { city?: string; service_type?: string } = {}) {
     setLoading(true);
     setError(null);
@@ -33,20 +32,18 @@ export default function ProvidersPage() {
       const params = new URLSearchParams();
       if (filters.city) params.append("city", filters.city);
       if (filters.service_type) params.append("service_type", filters.service_type);
-      const url = `${base}/providers${params.toString() ? `?${params.toString()}` : ""}`;
-      const res = await fetch(url, { cache: "no-store" });
-      if (!res.ok) throw new Error(`Request failed: ${res.status}`);
-      const data: Provider[] = await res.json();
+
+      const data = await api.get<Provider[]>(
+        `/providers${params.toString() ? `?${params.toString()}` : ""}`
+      );
       setProviders(Array.isArray(data) ? data : []);
 
-      // fetch stats for each provider (simple & fine for small lists)
+      // fetch stats for each provider (kept as-is)
       const statsEntries = await Promise.all(
         (Array.isArray(data) ? data : []).map(async (p) => {
           try {
-            const sres = await fetch(`${base}/providers/${p.id}/stats`, { cache: "no-store" });
-            if (!sres.ok) return [p.id, { provider_id: p.id, review_count: 0, avg_stars: null }] as const;
-            const sjson: Stats = await sres.json();
-            return [p.id, sjson] as const;
+            const s = await api.get<Stats>(`/providers/${p.id}/stats`);
+            return [p.id, s] as const;
           } catch {
             return [p.id, { provider_id: p.id, review_count: 0, avg_stars: null }] as const;
           }
@@ -62,13 +59,8 @@ export default function ProvidersPage() {
     }
   }
 
-  // initial load
-  useEffect(() => {
-    fetchProviders();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  useEffect(() => { fetchProviders(); }, []);
 
-  // live (debounced) search
   useEffect(() => {
     const id = setTimeout(() => {
       fetchProviders({
@@ -77,39 +69,17 @@ export default function ProvidersPage() {
       });
     }, 300);
     return () => clearTimeout(id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [city, serviceType]);
 
   return (
     <main>
       <h1 style={{ fontSize: 28, marginBottom: 12 }}>Browse Providers</h1>
-
-      {/* optional tiny debug line */}
-      <p style={{ opacity: 0.6, fontSize: 12 }}>
-        debug: {process.env.NEXT_PUBLIC_API_URL}/providers
-      </p>
+      <p style={{ opacity: 0.6, fontSize: 12 }}>debug: {API_BASE}/providers</p>
 
       <div style={{ display: "flex", gap: 10, marginBottom: 16 }}>
-        <input
-          value={city}
-          onChange={(e) => setCity(e.target.value)}
-          placeholder="Filter by city (e.g., Miami)"
-          style={{ padding: 8, border: "1px solid #ccc", borderRadius: 6 }}
-        />
-        <input
-          value={serviceType}
-          onChange={(e) => setServiceType(e.target.value)}
-          placeholder="Filter by service (e.g., Roofing)"
-          style={{ padding: 8, border: "1px solid #ccc", borderRadius: 6 }}
-        />
-        <button
-          onClick={() => {
-            setCity("");
-            setServiceType("");
-          }}
-          style={{ padding: "8px 12px", background: "black", color: "white", borderRadius: 6 }}
-          type="button"
-        >
+        <input value={city} onChange={(e) => setCity(e.target.value)} placeholder="Filter by city (e.g., Miami)" style={{ padding: 8, border: "1px solid #ccc", borderRadius: 6 }} />
+        <input value={serviceType} onChange={(e) => setServiceType(e.target.value)} placeholder="Filter by service (e.g., Roofing)" style={{ padding: 8, border: "1px solid #ccc", borderRadius: 6 }} />
+        <button onClick={() => { setCity(""); setServiceType(""); }} style={{ padding: "8px 12px", background: "black", color: "white", borderRadius: 6 }} type="button">
           Reset
         </button>
       </div>
@@ -136,14 +106,7 @@ export default function ProvidersPage() {
               return (
                 <tr key={p.id}>
                   <td style={{ borderBottom: "1px solid #f0f0f0", padding: 8 }}>
-                    <strong>
-                      <a
-                        href={`/providers/${p.id}`}
-                        style={{ color: "blue", textDecoration: "underline" }}
-                      >
-                        {p.name}
-                      </a>
-                    </strong>
+                    <strong><a href={`/providers/${p.id}`} style={{ color: "blue", textDecoration: "underline" }}>{p.name}</a></strong>
                   </td>
                   <td style={{ borderBottom: "1px solid #f0f0f0", padding: 8 }}>{p.service_type ?? ""}</td>
                   <td style={{ borderBottom: "1px solid #f0f0f0", padding: 8 }}>{p.city ?? ""}</td>

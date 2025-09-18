@@ -1,6 +1,7 @@
 // app/layout.tsx
 import "./globals.css";
 import React from "react";
+import Header from "./components/Header";
 
 export const metadata = {
   title: "PairPro",
@@ -15,22 +16,16 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <header>
-          <h1>PairPro</h1>
-          <nav>
-            <a href="/">Home</a>
-            <a href="/providers">Providers</a>
-            <a href="/providers/new">Add Provider</a>
-            <a href="/jobs/new">Create Job</a>
-            <a href="/dashboard">Dashboard</a>
-            <a href="/auth/login">Log in</a>
-            <a href="/auth/signup">Sign up</a>
-          </nav>
-        </header>
+        {/* Shared Header */}
+        <Header />
 
+        {/* Main page content */}
         <main>{children}</main>
 
-        <footer>© {new Date().getFullYear()} PairPro</footer>
+        {/* Footer */}
+        <footer style={{ marginTop: 48, opacity: 0.6, textAlign: "center" }}>
+          © {new Date().getFullYear()} PairPro
+        </footer>
       </body>
     </html>
   );

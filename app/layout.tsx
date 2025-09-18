@@ -1,5 +1,5 @@
 // app/layout.tsx
-import "./globals.css";   // ✅ add this line
+import "./globals.css";
 import React from "react";
 
 export const metadata = {
@@ -14,24 +14,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body
-        style={{
-          maxWidth: 720,
-          margin: "0 auto",
-          padding: 24,
-          fontFamily: "system-ui, sans-serif",
-        }}
-      >
-        <header
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginBottom: 24,
-          }}
-        >
-          <strong>PairPro</strong>
-          <nav style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+      <body>
+        <header>
+          <h1>PairPro</h1>
+          <nav>
             <a href="/">Home</a>
             <a href="/providers">Providers</a>
             <a href="/providers/new">Add Provider</a>
@@ -42,11 +28,9 @@ export default function RootLayout({
           </nav>
         </header>
 
-        {children}
+        <main>{children}</main>
 
-        <footer style={{ marginTop: 48, opacity: 0.6 }}>
-          © {new Date().getFullYear()} PairPro
-        </footer>
+        <footer>© {new Date().getFullYear()} PairPro</footer>
       </body>
     </html>
   );

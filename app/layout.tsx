@@ -16,14 +16,12 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        {/* Shared Header */}
+        {/* ✅ Shared header with buttons */}
         <Header />
 
-        {/* Main page content */}
         <main>{children}</main>
 
-        {/* Footer */}
-        <footer style={{ marginTop: 48, opacity: 0.6, textAlign: "center" }}>
+        <footer style={{ marginTop: 48, textAlign: "center", opacity: 0.6 }}>
           © {new Date().getFullYear()} PairPro
         </footer>
       </body>

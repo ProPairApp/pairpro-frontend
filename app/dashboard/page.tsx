@@ -1,67 +1,117 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import LogoutButton from "../components/LogoutButton";
 
-type User = { id: number; email: string; role: "client" | "provider" };
+type Me = {
+  id: number;
+  email: string;
+  role: "client" | "provider";
+  name?: string | null;
+  last_name?: string | null;
+  username?: string | null;
+};
+
+const base = process.env.NEXT_PUBLIC_API_URL!;
 
 export default function DashboardPage() {
-  const base = process.env.NEXT_PUBLIC_API_URL!;
-  const router = useRouter();
-  const [user, setUser] = useState<User | null>(null);
+  const [me, setMe] = useState<Me | null>(null);
   const [checking, setChecking] = useState(true);
   const [debug, setDebug] = useState<string>("");
 
   useEffect(() => {
-    async function run() {
-      const token = typeof window !== "undefined" ? localStorage.getItem("pairpro_token") : null;
-      if (!token) {
-        setDebug("No token in localStorage.");
-        setChecking(false);
-        return;
-      }
+    (async () => {
       try {
-        const r = await fetch(`${base}/auth/me`, { headers: { Authorization: `Bearer ${token}` } });
+        const token =
+          typeof window !== "undefined"
+            ? localStorage.getItem("pairpro_token")
+            : null;
+        if (!token) {
+          setDebug("No token in localStorage.");
+          return;
+        }
+        const r = await fetch(`${base}/auth/me`, {
+          headers: { Authorization: `Bearer ${token}` },
+          cache: "no-store",
+        });
         if (!r.ok) {
           const txt = await r.text();
           setDebug(`auth/me → ${r.status} ${txt}`);
-          setChecking(false);
           return;
         }
-        const u = (await r.json()) as User;
-        setUser(u);
+        const j: Me = await r.json();
+        setMe(j);
       } catch (e: any) {
         setDebug(`network error: ${e?.message || e}`);
       } finally {
         setChecking(false);
       }
-    }
-    run();
-  }, [base]);
+    })();
+  }, []);
 
   if (checking) return <main>Checking your session…</main>;
-  if (!user) {
+
+  if (!me) {
     return (
       <main>
         <h1>Not logged in</h1>
-        <p>Please <a href="/auth/login">log in</a> or <a href="/auth/signup">create an account</a>.</p>
-        {debug && <pre style={{background:"#f6f6f6", padding:8, borderRadius:6, marginTop:12}}>{debug}</pre>}
+        <p>
+          Please <a href="/auth/login">log in</a> or{" "}
+          <a href="/auth/signup">create an account</a>.
+        </p>
+        {debug && (
+          <pre
+            style={{
+              background: "#f6f6f6",
+              padding: 8,
+              borderRadius: 6,
+              marginTop: 12,
+            }}
+          >
+            {debug}
+          </pre>
+        )}
       </main>
     );
   }
 
+  const displayName =
+    (me.name && me.last_name
+      ? `${me.name} ${me.last_name}`
+      : me.name || "") ||
+    me.username ||
+    me.email;
+
   return (
-    <main style={{ display: "grid", gap: 12 }}>
-      <h1>Welcome, {user.email}</h1>
-      <p>Role: <strong>{user.role}</strong></p>
-      <div style={{ display:"flex", gap:10, flexWrap:"wrap" }}>
-        <a href="/providers">Browse Providers</a>
-        <a href="/jobs/new">Create Job</a>
-        <a href="/jobs/mine">My Hires</a>
+    <main style={{ display: "grid", gap: 16 }}>
+      <h1>Welcome, {displayName}</h1>
+      <p style={{ opacity: 0.8 }}>Role: <strong>{me.role}</strong></p>
+
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+        <a href="/jobs/new" className="btn">Create Job</a>
+        <a href="/providers" className="btn">Find Providers</a>
+        <a href="/jobs/mine" className="btn">My Jobs</a>
       </div>
-      <button onClick={() => { localStorage.removeItem("pairpro_token"); window.location.href = "/auth/login"; }}>
-        Sign out
-      </button>
+
+      <div>
+        <LogoutButton redirect="/auth/login" />
+      </div>
+
+      {debug && (
+        <details>
+          <summary>Debug</summary>
+          <pre
+            style={{
+              background: "#f6f6f6",
+              padding: 8,
+              borderRadius: 6,
+              marginTop: 8,
+            }}
+          >
+            {debug}
+          </pre>
+        </details>
+      )}
     </main>
   );
 }

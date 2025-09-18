@@ -5,8 +5,7 @@ import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
   const router = useRouter();
-  const baseRaw = process.env.NEXT_PUBLIC_API_URL || "";
-  // normalize: remove trailing slash just in case
+  const baseRaw = process.env.NEXT_PUBLIC_API_BASE || process.env.NEXT_PUBLIC_API_URL || "";
   const base = useMemo(() => baseRaw.replace(/\/+$/, ""), [baseRaw]);
 
   const [email, setEmail] = useState("");
@@ -21,69 +20,45 @@ export default function LoginPage() {
     setMsg(null);
     setSubmitting(true);
 
-    // Always clear old token before trying a new login
-    localStorage.removeItem("pairpro_token");
-
     try {
-      if (!base) throw new Error("NEXT_PUBLIC_API_URL is not set.");
+      if (!base) throw new Error("API base URL is not set.");
 
-      // Build form body as application/x-www-form-urlencoded (FastAPI expects this)
+      // OAuth2PasswordRequestForm expects x-www-form-urlencoded with username/password
       const body = new URLSearchParams();
-      body.set("grant_type", "password");
       body.set("username", email.trim());
       body.set("password", password);
-      body.set("scope", "");
-      body.set("client_id", "");
-      body.set("client_secret", "");
 
-      // Add a timeout so “Failed to fetch” doesn’t hang forever
-      const ctrl = new AbortController();
-      const t = setTimeout(() => ctrl.abort(), 15000);
-
+      // Login: set HttpOnly cookie via Set-Cookie (needs credentials: 'include')
       const res = await fetch(`${base}/auth/login`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body,
-        signal: ctrl.signal,
+        credentials: "include", // <-- critical: accept cookie from backend
       });
-
-      clearTimeout(t);
 
       if (!res.ok) {
         const text = await res.text();
-        throw new Error(text || `Login failed with ${res.status}`);
+        throw new Error(text || `Login failed (${res.status})`);
       }
 
-      const data = await res.json(); // { access_token, token_type }
-      if (!data?.access_token) {
-        throw new Error("No access_token in response.");
-      }
-
-      localStorage.setItem("pairpro_token", data.access_token);
-      // quick sanity ping to /auth/me (optional but helpful)
+      // Optional sanity check using the cookie (no Authorization header needed)
       const me = await fetch(`${base}/auth/me`, {
-        headers: { Authorization: `Bearer ${data.access_token}` },
+        credentials: "include", // send cookie back
+        cache: "no-store",
       });
       if (!me.ok) {
         const mt = await me.text();
         throw new Error(`/auth/me failed: ${mt || me.status}`);
       }
 
-      // All good -> go to dashboard
+      // All good — go to dashboard
       router.push("/dashboard");
     } catch (err: any) {
-      // Make network/CORS errors clearer
-      if (err?.name === "AbortError") {
-        setMsg("Network timeout. Check your internet and try again.");
-      } else if (String(err?.message || "").includes("Failed to fetch")) {
-        setMsg(
-          "Failed to reach the API. Double-check the URL below is correct and HTTPS."
-        );
-      } else {
-        setMsg(err?.message || "Something went wrong.");
-      }
+      const msg =
+        err?.name === "AbortError"
+          ? "Network timeout. Try again."
+          : String(err?.message || "Something went wrong.");
+      setMsg(msg);
       btnRef.current?.focus();
     } finally {
       setSubmitting(false);
@@ -135,11 +110,7 @@ export default function LoginPage() {
           {submitting ? "Signing in…" : "Log in"}
         </button>
 
-        {msg && (
-          <p style={{ color: "crimson", marginTop: 4 }}>
-            {msg}
-          </p>
-        )}
+        {msg && <p style={{ color: "crimson", marginTop: 4 }}>{msg}</p>}
       </form>
 
       <div style={{ marginTop: 16, opacity: 0.7, fontSize: 12, lineHeight: 1.5 }}>
@@ -151,8 +122,7 @@ export default function LoginPage() {
           </a>
         </div>
         <div>
-          Tip: Make sure{" "}
-          <code>NEXT_PUBLIC_API_URL</code> is exactly{" "}
+          Tip: set <code>NEXT_PUBLIC_API_BASE</code> or <code>NEXT_PUBLIC_API_URL</code> to{" "}
           <code>https://pairpro-backend-vyh1.onrender.com</code> (no trailing slash).
         </div>
       </div>

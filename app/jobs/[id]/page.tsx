@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 
 type JobDetail = {
   id: number;
@@ -22,11 +22,11 @@ type PlanItem = {
   created_at: string;
 };
 
-const base = process.env.NEXT_PUBLIC_API_URL!;
-
 export default function JobDetailPage() {
+  const router = useRouter();
   const params = useParams<{ id: string }>();
   const jobId = useMemo(() => Number(params?.id), [params]);
+
   const [job, setJob] = useState<JobDetail | null>(null);
   const [plans, setPlans] = useState<PlanItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -34,43 +34,72 @@ export default function JobDetailPage() {
   const [newPlan, setNewPlan] = useState("");
   const [adding, setAdding] = useState(false);
 
+  const baseRaw = process.env.NEXT_PUBLIC_API_URL || "";
+  const base = useMemo(() => baseRaw.replace(/\/+$/, ""), [baseRaw]);
+
+  function getToken() {
+    return typeof window !== "undefined" ? localStorage.getItem("pairpro_token") : null;
+  }
+
+  async function fetchAuthed(path: string, init: RequestInit = {}) {
+    const token = getToken();
+    if (!token) throw new Error("Not logged in.");
+    const res = await fetch(`${base}${path}`, {
+      ...init,
+      headers: {
+        ...(init.headers || {}),
+        Authorization: `Bearer ${token}`,
+      },
+      cache: "no-store",
+    });
+    if (res.status === 401) {
+      // token expired or missing -> send to login
+      router.push("/auth/login");
+      throw new Error("Not authenticated.");
+    }
+    if (!res.ok) throw new Error(await res.text());
+    return res;
+  }
+
   useEffect(() => {
+    if (!Number.isFinite(jobId)) {
+      setErr("Invalid job id.");
+      setLoading(false);
+      return;
+    }
     (async () => {
       try {
         setErr(null);
-        const token = typeof window !== "undefined" ? localStorage.getItem("pairpro_token") : null;
-        if (!token) throw new Error("Not logged in.");
-        // job
-        const r1 = await fetch(`${base}/jobs/${jobId}`, { headers: { Authorization: `Bearer ${token}` } });
-        if (!r1.ok) throw new Error(await r1.text());
-        const data: JobDetail = await r1.json();
-        setJob(data);
-        // plans
-        const r2 = await fetch(`${base}/jobs/${jobId}/plans`, { headers: { Authorization: `Bearer ${token}` } });
-        if (!r2.ok) throw new Error(await r2.text());
-        const items: PlanItem[] = await r2.json();
-        setPlans(items);
+        setLoading(true);
+
+        const [jobRes, plansRes] = await Promise.all([
+          fetchAuthed(`/jobs/${jobId}`),
+          fetchAuthed(`/jobs/${jobId}/plans`),
+        ]);
+
+        const jobJson: JobDetail = await jobRes.json();
+        const plansJson: PlanItem[] = await plansRes.json();
+        setJob(jobJson);
+        setPlans(plansJson);
       } catch (e: any) {
         setErr(e?.message || "Failed to load job.");
       } finally {
         setLoading(false);
       }
     })();
-  }, [jobId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [jobId, base]);
 
   async function addPlanItem(e: React.FormEvent) {
     e.preventDefault();
     if (!newPlan.trim() || adding) return;
     try {
       setAdding(true);
-      const token = typeof window !== "undefined" ? localStorage.getItem("pairpro_token") : null;
-      if (!token) throw new Error("Not logged in.");
-      const r = await fetch(`${base}/jobs/${jobId}/plans`, {
+      const r = await fetchAuthed(`/jobs/${jobId}/plans`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text: newPlan.trim() }),
       });
-      if (!r.ok) throw new Error(await r.text());
       const created: PlanItem = await r.json();
       setPlans((prev) => [...prev, created]);
       setNewPlan("");
@@ -82,7 +111,17 @@ export default function JobDetailPage() {
   }
 
   if (loading) return <p>Loading…</p>;
-  if (err) return <p style={{ color: "crimson" }}>{err}</p>;
+  if (err) return (
+    <div>
+      <p style={{ color: "crimson" }}>{err}</p>
+      <button
+        onClick={() => location.reload()}
+        style={{ marginTop: 8, padding: "8px 12px", borderRadius: 6 }}
+      >
+        Retry
+      </button>
+    </div>
+  );
   if (!job) return <p>Job not found.</p>;
 
   return (
@@ -94,10 +133,16 @@ export default function JobDetailPage() {
 
       {job.description && <p>{job.description}</p>}
 
-      {job.photos?.length ? (
+      {Array.isArray(job.photos) && job.photos.length > 0 ? (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px,1fr))", gap: 8 }}>
           {job.photos.map((u, i) => (
-            <img key={i} src={u} alt={`photo ${i + 1}`} style={{ width: "100%", borderRadius: 8 }} />
+            <img
+              key={i}
+              src={u}
+              alt={`photo ${i + 1}`}
+              style={{ width: "100%", borderRadius: 8, objectFit: "cover" }}
+              loading="lazy"
+            />
           ))}
         </div>
       ) : (

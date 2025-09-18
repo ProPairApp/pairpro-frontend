@@ -61,3 +61,26 @@ footer {
   font-size: 14px;
   opacity: 0.6;
 }
+
+/* ✅ Buttons */
+.btn {
+  display: inline-block;
+  padding: 8px 16px;          /* medium size */
+  border-radius: 6px;
+  background-color: #006d77;  /* teal */
+  color: white;
+  font-size: 15px;
+  font-weight: 500;
+  border: none;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.btn:hover {
+  background-color: #00555c;
+}
+
+.btn:disabled {
+  background-color: #aaa;
+  cursor: not-allowed;
+}
